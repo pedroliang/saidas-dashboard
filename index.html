@@ -196,6 +196,7 @@ tr:hover td{background:var(--surface-2)}
     <div class="topbar">
       <div><h1 id="pagetitle">Visão geral</h1><div class="sub" id="periodtxt">—</div></div>
       <div class="tools">
+        <div class="field"><input type="search" id="gsearch" placeholder="Consultar SKU…" autocomplete="off" style="width:150px"></div>
         <div class="seg" id="monthseg"></div>
         <div class="field"><input type="date" id="dfrom"> <span>até</span> <input type="date" id="dto"></div>
         <button class="btn" id="btnreload" title="Recarregar da planilha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button>
@@ -205,6 +206,12 @@ tr:hover td{background:var(--surface-2)}
       </div>
     </div>
     <div class="print-only" id="printhdr"></div>
+
+    <!-- CONSULTA DE SKU -->
+    <div class="card" id="lookup" hidden style="margin-bottom:14px">
+      <h3>Consulta de SKU <small id="lookup-sub"></small><button class="btn no-print" id="lookup-close" style="height:28px;padding:0 9px">Fechar</button></h3>
+      <div id="lookup-body"></div>
+    </div>
 
     <!-- VISÃO GERAL -->
     <section class="section active" id="sec-overview">
@@ -633,6 +640,51 @@ function renderData(){
     (VARIANTS.length?`<br><b>Grafias diferentes tratadas como SKUs distintos:</b> ${VARIANTS.map(v=>v.join(' / ')).join(' · ')}.`:'');
 }
 
+/* ============ SKU LOOKUP (global) ============ */
+let lookupQ='';
+function renderLookup(){
+  const box=$('#lookup'); const q=lookupQ.trim().toLowerCase();
+  if(!q){ box.hidden=true; return; }
+  box.hidden=false;
+  const rows=filtered(); const total=sum(rows.map(r=>r.qty))||1;
+  const matches=aggBySku(rows).filter(s=>s.sku.toLowerCase().includes(q));
+  const exact=matches.find(s=>s.sku.toLowerCase()===q)||(matches.length===1?matches[0]:null);
+  $('#lookup-sub').textContent=`${currentPeriodLabel()} · ${periodText(filter.from,filter.to)}`;
+  if(!matches.length){
+    const ever=aggBySku(RAW).filter(s=>s.sku.toLowerCase().includes(q));
+    $('#lookup-body').innerHTML=`<div class="empty">Nenhum SKU "${esc(lookupQ)}" com saída neste período.${ever.length?`<br><span class="kbd">Existe em outros períodos: ${ever.slice(0,6).map(s=>esc(s.sku)+' ('+fmt(s.qty)+' un no total)').join(', ')} — mude o filtro para "Tudo".</span>`:''}</div>`;
+    return;
+  }
+  const S=SERIES();
+  let h='';
+  if(exact){
+    const rr=rows.filter(r=>r.sku===exact.sku).sort((a,b)=>a.key.localeCompare(b.key));
+    const rank=aggBySku(rows).findIndex(s=>s.sku===exact.sku)+1;
+    h+=`<div class="grid g-4" style="margin-bottom:14px">
+      <div class="tile"><div class="lbl">SKU ${esc(exact.sku)} · unidades no período</div><div class="val num" style="color:${S[0]}">${fmt(exact.qty)}</div><div class="delta">${pct(exact.qty/total)} do total · ${rank}º no ranking</div></div>
+      <div class="tile"><div class="lbl">Dias com saída</div><div class="val num">${fmt(exact.days)}</div><div class="delta">${fmt(rr.length)} lançamentos</div></div>
+      <div class="tile"><div class="lbl">Média por lançamento</div><div class="val num">${fmt1(exact.qty/rr.length)}</div><div class="delta">mín ${fmt(Math.min(...rr.map(r=>r.qty)))} · máx ${fmt(exact.max)}</div></div>
+      <div class="tile"><div class="lbl">Maior dia</div><div class="val num">${fmt(exact.max)}</div><div class="delta">${esc(exact.maxDay)}</div></div>
+    </div>
+    <div class="grid g-21"><div><div class="chart short"><canvas id="c-lookup"></canvas></div></div>
+    <div class="tbl" style="max-height:220px"><table><thead><tr><th>Lançamento</th><th class="r">Unidades</th></tr></thead><tbody>${rr.map(r=>`<tr><td>${esc(r.label)}</td><td class="r num">${fmt(r.qty)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="r num"><b>${fmt(exact.qty)}</b></td></tr></tbody></table></div></div>`;
+  }
+  if(matches.length>1||!exact){
+    h+=`<div class="tbl" style="max-height:260px;margin-top:${exact?'14px':'0'}"><table><thead><tr><th>SKU</th><th class="r">Unidades no período</th><th class="r">Share</th><th class="r">Dias c/ saída</th><th class="r">Maior dia</th></tr></thead><tbody>${matches.slice(0,50).map(s=>`<tr><td><a href="#" data-sku="${esc(s.sku)}" style="font-weight:600;text-decoration:none;color:${S[0]}">${esc(s.sku)}</a></td><td class="r num">${fmt(s.qty)}</td><td class="r num">${pct(s.qty/total)}</td><td class="r num">${fmt(s.days)}</td><td class="r num">${fmt(s.max)} (${esc(s.maxDay)})</td></tr>`).join('')}</tbody></table></div>
+    ${matches.length>1?`<div class="kbd" style="margin-top:6px">${matches.length} SKUs contêm "${esc(lookupQ)}" — clique num SKU para ver o detalhe.</div>`:''}`;
+  }
+  $('#lookup-body').innerHTML=h;
+  $$('#lookup-body a[data-sku]').forEach(a=>a.onclick=e=>{e.preventDefault();lookupQ=a.dataset.sku;$('#gsearch').value=lookupQ;renderLookup();});
+  if(exact){
+    const rr=rows.filter(r=>r.sku===exact.sku).sort((a,b)=>a.key.localeCompare(b.key));
+    mk('c-lookup',{type:'bar',data:{labels:rr.map(r=>r.label),datasets:[{data:rr.map(r=>r.qty),backgroundColor:S[0],borderRadius:4,borderSkipped:'bottom',maxBarThickness:22}]},
+      options:{maintainAspectRatio:false,scales:{x:gridX,y:gridY()},plugins:{tooltip:{callbacks:{label:c=>` ${fmt(c.raw)} unidades`}}}}});
+  }
+}
+$('#gsearch').oninput=e=>{lookupQ=e.target.value;renderLookup();};
+$('#gsearch').onkeydown=e=>{if(e.key==='Escape'){lookupQ='';e.target.value='';renderLookup();}};
+$('#lookup-close').onclick=()=>{lookupQ='';$('#gsearch').value='';renderLookup();};
+
 /* ============ TABLE UTIL ============ */
 function fillTable(id, rows, cols){
   const t=document.getElementById(id); const tb=t.querySelector('tbody'); const ths=[...t.querySelectorAll('th')];
@@ -749,6 +801,7 @@ window.addEventListener('afterprint',()=>Object.values(charts).forEach(c=>c.resi
 
 function render(){
   if(!RAW.length) return;
+  renderLookup();
   ({overview:renderOverview,ranking:renderRanking,abc:renderABC,compare:renderCompare,skus:renderSkus,data:renderData})[sec]();
 }
 
