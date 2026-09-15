@@ -420,7 +420,7 @@ function aggByDay(rows){
 function periodBounds(rows){ const ks=rows.map(r=>r.key); return {from:ks.length?ks.reduce((a,b)=>a<b?a:b):null,to:ks.length?ks.reduce((a,b)=>a>b?a:b):null}; }
 function rangeOfMonth(mk){ const [y,m]=mk.split('-').map(Number); return {from:`${y}-${pad(m)}-01`, to:`${y}-${pad(m)}-${pad(new Date(y,m,0).getDate())}`}; }
 function periodText(from,to){ if(!from) return '—'; const a=parseKey(from), b=parseKey(to); return `${fmtDateY(a)} – ${fmtDateY(b)}`; }
-function currentPeriodLabel(){ return filter.monthKey && filter.monthKey!=='all' ? monthLabel(filter.monthKey) : (filter.monthKey==='all'?'Todo o histórico':'Período personalizado'); }
+function currentPeriodLabel(){ if(filter.monthKey==='all') return 'Todo o histórico'; if(filter.monthKey&&filter.monthKey!=='custom') return monthLabel(filter.monthKey); return 'Período personalizado'; }
 
 /* ============ CHART DEFAULTS ============ */
 function chartTheme(){
@@ -696,7 +696,12 @@ function syncFilterUI(){
   $('#dfrom').value=filter.from||''; $('#dto').value=filter.to||'';
   $('#periodtxt').textContent=`${currentPeriodLabel()} · ${periodText(filter.from,filter.to)}`;
 }
-$('#dfrom').onchange=$('#dto').onchange=()=>{ filter.from=$('#dfrom').value||filter.from; filter.to=$('#dto').value||filter.to; if(filter.from>filter.to){[filter.from,filter.to]=[filter.to,filter.from];} filter.monthKey='custom'; syncFilterUI(); render(); };
+$('#dfrom').onchange=$('#dto').onchange=()=>{
+  const b=periodBounds(RAW); const ok=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&v>=b.from&&v<=b.to;
+  const f=$('#dfrom').value, t=$('#dto').value;
+  filter.from=ok(f)?f:(f<b.from?b.from:filter.from); filter.to=ok(t)?t:(t>b.to?b.to:filter.to);
+  if(filter.from>filter.to){[filter.from,filter.to]=[filter.to,filter.from];}
+  filter.monthKey='custom'; syncFilterUI(); render(); };
 
 function buildCmpUI(){
   for(const [id,p] of [['cmpA',cmp.A],['cmpB',cmp.B]]){
@@ -765,6 +770,7 @@ async function load(force){
   months=[...new Set(RAW.map(r=>monthKey(r.date)))].sort();
   const first=!filter.monthKey;
   buildMonthSeg();
+  { const b=periodBounds(RAW); $('#dfrom').min=$('#dto').min=b.from; $('#dfrom').max=$('#dto').max=b.to; }
   if(first){
     const last=months[months.length-1];
     cmp.B={preset:last,from:null,to:null}; cmp.A={preset:months[months.length-2]||last,from:null,to:null};
