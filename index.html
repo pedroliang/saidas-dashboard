@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Saídas · Centralux</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f4f4f1;--surface:#fcfcfb;--surface-2:#f0efec;--ink:#0b0b0b;--ink-2:#52514e;--muted:#898781;
+  --grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--ring-2:rgba(11,11,11,.06);
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#4a3aa7;--s8:#e34948;
+  --seq1:#cde2fb;--seq2:#9ec5f4;--seq3:#5598e7;--seq4:#2a78d6;--seq5:#1c5cab;--seq6:#0d366b;
+  --good:#006300;--bad:#c92a2a;--accent:#1c5cab;--accent-ink:#fff;
+  --nav-bg:#141413;--nav-ink:#d9d8d1;--nav-muted:#7d7c76;--nav-active:#ffffff;--nav-hi:rgba(255,255,255,.08);
+  --radius:12px;--shadow:0 1px 2px rgba(11,11,11,.04),0 8px 24px -12px rgba(11,11,11,.12);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d;--surface:#1a1a19;--surface-2:#232322;--ink:#ffffff;--ink-2:#c3c2b7;--muted:#898781;
+    --grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--ring-2:rgba(255,255,255,.06);
+    --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767;
+    --seq1:#184f95;--seq2:#1c5cab;--seq3:#256abf;--seq4:#3987e5;--seq5:#6da7ec;--seq6:#9ec5f4;
+    --good:#0ca30c;--bad:#e66767;--accent:#3987e5;--accent-ink:#0b0b0b;
+    --nav-bg:#0a0a0a;--shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d;--surface:#1a1a19;--surface-2:#232322;--ink:#ffffff;--ink-2:#c3c2b7;--muted:#898781;
+  --grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--ring-2:rgba(255,255,255,.06);
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767;
+  --seq1:#184f95;--seq2:#1c5cab;--seq3:#256abf;--seq4:#3987e5;--seq5:#6da7ec;--seq6:#9ec5f4;
+  --good:#0ca30c;--bad:#e66767;--accent:#3987e5;--accent-ink:#0b0b0b;
+  --nav-bg:#0a0a0a;--shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.45;color:var(--ink);background:var(--page);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+a{color:inherit}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+
+/* layout */
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+.nav{background:var(--nav-bg);color:var(--nav-ink);padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 18px}
+.brand .mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#3987e5,#1c5cab);position:relative;flex:none}
+.brand .mark::after{content:"";position:absolute;inset:8px;border-radius:3px;background:#fff;opacity:.92;clip-path:polygon(0 100%,0 55%,35% 55%,35% 25%,65% 25%,65% 0,100% 0,100% 100%)}
+.brand b{display:block;color:#fff;font-weight:600;font-size:14px;line-height:1.1}
+.brand span{display:block;color:var(--nav-muted);font-size:11.5px;margin-top:2px}
+.nav-sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--nav-muted);padding:12px 10px 4px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-decoration:none;color:var(--nav-ink);font-size:13.5px;cursor:pointer}
+.nav a svg{width:16px;height:16px;flex:none;opacity:.7}
+.nav a:hover{background:var(--nav-hi)}
+.nav a.active{background:var(--nav-hi);color:var(--nav-active)}
+.nav a.active svg{opacity:1}
+.nav .foot{margin-top:auto;font-size:11.5px;color:var(--nav-muted);padding:10px;line-height:1.5}
+.nav .foot .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#1baf7a;margin-right:6px;vertical-align:1px}
+.nav .foot .dot.off{background:#e34948}
+.main{min-width:0;padding:22px 28px 60px}
+
+/* topbar */
+.topbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:22px}
+.topbar h1{font-size:20px}
+.topbar .sub{color:var(--ink-2);font-size:13px;margin-top:2px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--ring);background:var(--surface);cursor:pointer;font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--ink);color:var(--page);border-color:transparent}
+.btn.primary:hover{opacity:.9;background:var(--ink)}
+.btn svg{width:15px;height:15px}
+.btn:disabled{opacity:.5;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--ring);border-radius:9px;background:var(--surface);padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:0 11px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:var(--ink-2)}
+.seg button.on{background:var(--ink);color:var(--page)}
+.field{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)}
+.field input,.field select{height:34px;border:1px solid var(--ring);border-radius:9px;background:var(--surface);padding:0 10px;font-size:13px;color:var(--ink)}
+.field input[type=number]{width:70px}
+.field input[type=date]{width:140px}
+.field input[type=search],.field input[type=text]{width:180px}
+
+/* cards */
+.grid{display:grid;gap:14px}
+.g-4{grid-template-columns:repeat(4,1fr)}
+.g-3{grid-template-columns:repeat(3,1fr)}
+.g-2{grid-template-columns:repeat(2,1fr)}
+.g-21{grid-template-columns:2fr 1fr}
+.g-12{grid-template-columns:1fr 2fr}
+.card{background:var(--surface);border:1px solid var(--ring-2);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;min-width:0}
+.card h3{font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.card h3 small{font-weight:400;color:var(--muted);font-size:12px}
+.tile .lbl{font-size:12px;color:var(--ink-2)}
+.tile .val{font-size:26px;font-weight:600;letter-spacing:-.02em;margin-top:4px;line-height:1.1}
+.tile .val small{font-size:13px;font-weight:500;color:var(--muted);margin-left:4px}
+.tile .delta{font-size:12px;margin-top:6px;color:var(--muted)}
+.tile .delta.up{color:var(--good)}.tile .delta.down{color:var(--bad)}
+.chart{position:relative;height:280px}
+.chart.tall{height:340px}
+.chart.short{height:220px}
+.section{display:none}
+.section.active{display:block}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.note{font-size:12.5px;color:var(--ink-2);background:var(--surface-2);border-radius:9px;padding:10px 12px;line-height:1.5}
+.note b{color:var(--ink)}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--surface);cursor:pointer;user-select:none}
+th.sorted::after{content:" ↓";color:var(--ink-2)}
+th.sorted.asc::after{content:" ↑"}
+td.r,th.r{text-align:right}
+tr:hover td{background:var(--surface-2)}
+.tbl{overflow:auto;max-height:540px;border:1px solid var(--grid);border-radius:9px}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--s1);vertical-align:middle;margin-right:8px}
+.tag{display:inline-block;padding:1px 7px;border-radius:5px;font-size:11px;font-weight:600;letter-spacing:.03em}
+.tag.A{background:color-mix(in srgb,var(--s1) 18%,transparent);color:var(--s1)}
+.tag.B{background:color-mix(in srgb,var(--s4) 22%,transparent);color:#8a5b00}
+.tag.C{background:var(--surface-2);color:var(--ink-2)}
+:root[data-theme="dark"] .tag.B{color:#e4a63a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tag.B{color:#e4a63a}}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border-radius:999px;border:1px solid var(--ring);background:var(--surface);font-size:12.5px;font-weight:500}
+.chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.chip button{border:0;background:transparent;cursor:pointer;color:var(--muted);padding:0 3px;font-size:14px;line-height:1}
+.chip button:hover{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-2);margin-top:8px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.sug{position:absolute;z-index:20;background:var(--surface);border:1px solid var(--ring);border-radius:9px;box-shadow:var(--shadow);max-height:220px;overflow:auto;min-width:200px;display:none}
+.sug div{padding:7px 12px;cursor:pointer;font-size:13px}
+.sug div:hover{background:var(--surface-2)}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.loading{position:fixed;inset:0;background:var(--page);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:100;color:var(--ink-2)}
+.spinner{width:26px;height:26px;border-radius:50%;border:3px solid var(--grid);border-top-color:var(--s1);animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.err{color:var(--bad);max-width:520px;text-align:center;font-size:13px}
+.kbd{font-size:11px;color:var(--muted)}
+.hm{display:grid;gap:3px}
+.hm .cell{height:26px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink);font-variant-numeric:tabular-nums}
+.hm .lab{font-size:11px;color:var(--muted);display:flex;align-items:center}
+.print-only{display:none}
+
+@media (max-width:1100px){.g-4{grid-template-columns:repeat(2,1fr)}.g-3{grid-template-columns:1fr 1fr}.g-21,.g-12{grid-template-columns:1fr}}
+@media (max-width:800px){
+  .app{grid-template-columns:1fr}
+  .nav{position:relative;height:auto;flex-direction:row;flex-wrap:wrap;padding:12px;gap:2px}
+  .brand{width:100%;padding-bottom:8px}.nav-sec,.nav .foot{display:none}
+  .nav a{padding:6px 9px;font-size:12.5px}
+  .main{padding:16px 16px 40px}
+  .g-4,.g-3,.g-2{grid-template-columns:1fr}
+  .field input[type=search]{width:120px}
+}
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body{background:#fff;color:#000;font-size:11px}
+  .nav,.tools,.no-print,.seg,.field,.btn{display:none!important}
+  .app{display:block}
+  .main{padding:0}
+  .card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;page-break-inside:avoid}
+  .section.active{display:block}
+  .grid{gap:8px}
+  .chart{height:240px}
+  .tbl{max-height:none;overflow:visible;border:0}
+  th{position:static}
+  .print-only{display:block;margin-bottom:10px;color:#444;font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading"><div class="spinner"></div><div id="loadmsg">Lendo a planilha…</div></div>
+
+<div class="app">
+  <aside class="nav">
+    <div class="brand"><div class="mark"></div><div><b>Centralux</b><span>Saídas diárias</span></div></div>
+    <div class="nav-sec">Painel</div>
+    <a data-sec="overview" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Visão geral</a>
+    <a data-sec="ranking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ranking</a>
+    <a data-sec="abc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20c4-1 7-6 9-11s5-8 9-8"/><path d="M3 20h18"/></svg>Curva ABC</a>
+    <a data-sec="compare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v18M16 3v18M3 8h5M3 16h5M16 8h5M16 16h5"/></svg>Comparativo</a>
+    <a data-sec="skus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 4 5-8 4 5"/></svg>Análise de SKUs</a>
+    <a data-sec="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>Dados</a>
+    <div class="foot"><span class="dot" id="statusdot"></span><span id="statustxt">Conectando…</span><br><span id="lastupd"></span></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div><h1 id="pagetitle">Visão geral</h1><div class="sub" id="periodtxt">—</div></div>
+      <div class="tools">
+        <div class="seg" id="monthseg"></div>
+        <div class="field"><input type="date" id="dfrom"> <span>até</span> <input type="date" id="dto"></div>
+        <button class="btn" id="btnreload" title="Recarregar da planilha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button>
+        <button class="btn" id="btnxlsx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v3h16v-3"/></svg>Excel</button>
+        <button class="btn primary" id="btnpdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>PDF</button>
+        <button class="btn" id="btntheme" title="Tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 9 9c0-.5 0-1-.1-1.4A6 6 0 0 1 12 3z"/></svg></button>
+      </div>
+    </div>
+    <div class="print-only" id="printhdr"></div>
+
+    <!-- VISÃO GERAL -->
+    <section class="section active" id="sec-overview">
+      <div class="stack">
+        <div class="grid g-4" id="tiles"></div>
+        <div class="grid g-21">
+          <div class="card"><h3>Saídas por dia <small>unidades por lançamento</small></h3><div class="chart"><canvas id="c-daily"></canvas></div></div>
+          <div class="card"><h3>Top 10 SKUs <small>no período</small></h3><div class="chart"><canvas id="c-top"></canvas></div></div>
+        </div>
+        <div class="grid g-2">
+          <div class="card"><h3>Concentração <small>quanto do volume vem de poucos SKUs</small></h3><div class="chart short"><canvas id="c-conc"></canvas></div><div class="legend" id="conc-legend"></div></div>
+          <div class="card"><h3>Ritmo semanal <small>unidades por dia da semana</small></h3><div class="chart short"><canvas id="c-dow"></canvas></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RANKING -->
+    <section class="section" id="sec-ranking">
+      <div class="stack">
+        <div class="row no-print">
+          <div class="seg" id="rankmode"><button class="on" data-v="top">Mais vendidos</button><button data-v="bottom">Menos vendidos</button></div>
+          <div class="field">Mostrar <input type="number" id="rankn" value="20" min="5" max="200"></div>
+          <div class="field"><input type="search" id="ranksearch" placeholder="Buscar SKU…"></div>
+        </div>
+        <div class="grid g-12">
+          <div class="card"><h3 id="rank-title">Mais vendidos</h3><div class="chart tall"><canvas id="c-rank"></canvas></div></div>
+          <div class="card"><h3>Detalhe por SKU <small id="rank-count"></small></h3><div class="tbl"><table id="t-rank"><thead><tr><th>#</th><th>SKU</th><th class="r">Unidades</th><th class="r">Share</th><th class="r">Dias c/ saída</th><th class="r">Média/dia ativo</th><th class="r">Maior dia</th></tr></thead><tbody></tbody></table></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CURVA ABC -->
+    <section class="section" id="sec-abc">
+      <div class="stack">
+        <div class="row no-print">
+          <div class="field">Classe A até <input type="number" id="abcA" value="80" min="50" max="95">%</div>
+          <div class="field">Classe B até <input type="number" id="abcB" value="95" min="60" max="99">%</div>
+          <span class="kbd">Curva ABC por volume de unidades no período selecionado.</span>
+        </div>
+        <div class="grid g-3" id="abc-tiles"></div>
+        <div class="grid g-21">
+          <div class="card"><h3>Curva de Pareto <small>acumulado do volume por SKU ordenado</small></h3><div class="chart tall"><canvas id="c-abc"></canvas></div></div>
+          <div class="card"><h3>Distribuição das classes</h3><div class="chart tall"><canvas id="c-abcbar"></canvas></div></div>
+        </div>
+        <div class="card"><h3>Classificação completa</h3><div class="tbl"><table id="t-abc"><thead><tr><th>#</th><th>SKU</th><th>Classe</th><th class="r">Unidades</th><th class="r">Share</th><th class="r">Acumulado</th></tr></thead><tbody></tbody></table></div></div>
+      </div>
+    </section>
+
+    <!-- COMPARATIVO -->
+    <section class="section" id="sec-compare">
+      <div class="stack">
+        <div class="card no-print">
+          <div class="row">
+            <div class="field"><b style="color:var(--s1)">Período A</b> <select id="cmpA"></select> <input type="date" id="cmpAfrom"> <span>até</span> <input type="date" id="cmpAto"></div>
+            <div class="field" style="margin-left:14px"><b style="color:var(--s2)">Período B</b> <select id="cmpB"></select> <input type="date" id="cmpBfrom"> <span>até</span> <input type="date" id="cmpBto"></div>
+            <div class="field"><input type="search" id="cmpsearch" placeholder="Buscar SKU…"></div>
+          </div>
+        </div>
+        <div class="grid g-4" id="cmp-tiles"></div>
+        <div class="grid g-2">
+          <div class="card"><h3>Maiores altas <small>B em relação a A</small></h3><div class="chart"><canvas id="c-cmpup"></canvas></div></div>
+          <div class="card"><h3>Maiores quedas <small>B em relação a A</small></h3><div class="chart"><canvas id="c-cmpdown"></canvas></div></div>
+        </div>
+        <div class="card"><h3>SKU a SKU <small id="cmp-sub"></small></h3><div class="tbl"><table id="t-cmp"><thead><tr><th>SKU</th><th class="r">Período A</th><th class="r">Período B</th><th class="r">Variação</th><th class="r">Var. %</th><th>Situação</th></tr></thead><tbody></tbody></table></div></div>
+      </div>
+    </section>
+
+    <!-- ANÁLISE DE SKUS -->
+    <section class="section" id="sec-skus">
+      <div class="stack">
+        <div class="card no-print">
+          <div class="row" style="position:relative">
+            <div class="field"><input type="text" id="skuinput" placeholder="Digite um SKU e Enter…" autocomplete="off"><div class="sug" id="skusug"></div></div>
+            <div class="seg" id="gran"><button class="on" data-v="day">Diário</button><button data-v="week">Semanal</button><button data-v="month">Mensal</button></div>
+            <div class="seg" id="skumode"><button class="on" data-v="abs">Unidades</button><button data-v="idx">Índice (1º = 100)</button></div>
+            <button class="btn" id="skutop5">Usar top 5</button>
+            <button class="btn" id="skuclear">Limpar</button>
+          </div>
+          <div class="row" id="skuchips" style="margin-top:10px"></div>
+        </div>
+        <div class="card"><h3>Oscilação das saídas <small id="sku-sub"></small></h3><div class="chart tall"><canvas id="c-sku"></canvas></div></div>
+        <div class="card"><h3>Estatísticas no período</h3><div class="tbl"><table id="t-sku"><thead><tr><th>SKU</th><th class="r">Total</th><th class="r">Dias c/ saída</th><th class="r">Média/lanç.</th><th class="r">Mín</th><th class="r">Máx</th><th class="r">Variabilidade (CV)</th><th class="r">Tendência</th><th>Último lançamento</th></tr></thead><tbody></tbody></table></div><div class="note" style="margin-top:10px">CV = desvio-padrão ÷ média por lançamento; quanto maior, mais irregular a saída. Tendência compara a 2ª metade do período com a 1ª.</div></div>
+        <div class="card"><h3>Mapa de calor <small>unidades por SKU e semana</small></h3><div id="hm" class="hm"></div></div>
+      </div>
+    </section>
+
+    <!-- DADOS -->
+    <section class="section" id="sec-data">
+      <div class="stack">
+        <div class="row no-print">
+          <div class="field"><input type="search" id="datasearch" placeholder="Buscar SKU ou data…"></div>
+          <div class="seg" id="dataview"><button class="on" data-v="rows">Lançamentos</button><button data-v="pivot">SKU × mês</button></div>
+          <span class="kbd" id="data-count"></span>
+        </div>
+        <div class="card"><div class="tbl" style="max-height:70vh"><table id="t-data"><thead></thead><tbody></tbody></table></div></div>
+        <div class="note" id="datanote"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+const SHEET_ID = '1fRqUo8vH4awjCwV12U0fhR2bdBSRGFUVMlU8PozUsoQ';
+const GID = '417397612';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const MON3 = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
+
+/* ============ STATE ============ */
+let RAW = [];      // {date:Date, key:'YYYY-MM-DD', label, sku, qty, block}
+let BLOCKS = [];   // {label, date, key, rows:[{sku,qty}]}
+let VARIANTS = []; // sku spellings that look like variants
+let months = [];   // ['2026-07', ...]
+let filter = {from:null, to:null, monthKey:null};
+let sec = 'overview';
+let charts = {};
+let rank = {mode:'top', n:20, q:''};
+let abc = {A:80, B:95};
+let cmp = {A:{preset:null,from:null,to:null}, B:{preset:null,from:null,to:null}, q:''};
+let skuSel = [];
+let gran = 'day', skuMode = 'abs';
+let dataView = 'rows', dataQ = '';
+let sortState = {};
+
+/* ============ HELPERS ============ */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => (Math.round(n)).toLocaleString('pt-BR');
+const fmt1 = n => n.toLocaleString('pt-BR',{maximumFractionDigits:1,minimumFractionDigits:1});
+const pct = (n,d=1) => (n*100).toLocaleString('pt-BR',{maximumFractionDigits:d,minimumFractionDigits:d})+'%';
+const pad = n => String(n).padStart(2,'0');
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); };
+const fmtDate = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}`;
+const fmtDateY = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+const monthLabel = mk => { const [y,m]=mk.split('-'); return MONTHS[+m-1][0].toUpperCase()+MONTHS[+m-1].slice(1)+' '+y; };
+const cssVar = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const SERIES = () => [1,2,3,4,5,6,7,8].map(i=>cssVar('--s'+i));
+const alpha = (hex,a) => { const h=hex.replace('#',''); const n=parseInt(h,16); return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`; };
+const weekKey = d => { const t=new Date(d); const day=(t.getDay()+6)%7; t.setDate(t.getDate()-day); return keyOf(t); };
+const monthKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+const sum = a => a.reduce((s,x)=>s+x,0);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ============ CSV ============ */
+function parseCSV(text){
+  const rows=[]; let row=[], cell='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c=='"'){ if(text[i+1]=='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c=='"') q=true;
+    else if(c==','){ row.push(cell); cell=''; }
+    else if(c=='\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
+    else if(c!='\r') cell+=c;
+  }
+  row.push(cell); rows.push(row);
+  return rows;
+}
+
+/* Reads the sheet layout: blocks headed by "DD/MM - feito" followed by
+   "Código/SKU, Quantidade total" rows. Grouped rows come through the CSV
+   export normally, so grouping in the sheet doesn't hide anything. */
+function buildModel(rows){
+  const today=new Date();
+  const blocks=[]; let cur=null;
+  const dateRe=/(\d{1,2})\s*\/\s*(\d{1,2})/g;
+  for(const r of rows){
+    const a=(r[0]||'').trim(), b=(r[1]||'').trim();
+    if(!a) continue;
+    const dates=[...a.matchAll(dateRe)];
+    const isSku=/^\d+[\w()\-.\/ ]*$/.test(a) && b!=='' && !isNaN(parseFloat(b.replace(',','.'))) && dates.length===0;
+    if(dates.length && !isSku && /feito|^\d{1,2}\s*\//i.test(a)){
+      // block header. First date in the header defines the day the block belongs to
+      const [_,dd,mm]=dates[0];
+      let y=today.getFullYear();
+      if(+mm>today.getMonth()+1) y--; // headers have no year; a month ahead of today is last year
+      const d=new Date(y,+mm-1,+dd);
+      cur={label:a.replace(/\s*-\s*feito\s*$/i,'').trim(), date:d, key:keyOf(d), rows:[]};
+      blocks.push(cur); continue;
+    }
+    if(!cur) continue;
+    if(/^c[óo]digo/i.test(a)) continue;
+    if(isSku){
+      const qty=parseFloat(b.replace(/\./g,'').replace(',','.'));
+      if(!isNaN(qty)) cur.rows.push({sku:a, qty});
+    }
+  }
+  const raw=[];
+  for(const bl of blocks) for(const r of bl.rows) raw.push({date:bl.date,key:bl.key,label:bl.label,sku:r.sku,qty:r.qty,block:bl});
+  // variant detection: same digits with suffix
+  const skus=[...new Set(raw.map(r=>r.sku))];
+  const bases={};
+  for(const s of skus){ const base=s.match(/^\d+/)[0]; (bases[base]=bases[base]||[]).push(s); }
+  VARIANTS=Object.values(bases).filter(v=>v.length>1);
+  return {blocks,raw};
+}
+
+/* ============ DATA ACCESS ============ */
+function inRange(r, from, to){ return (!from||r.key>=from) && (!to||r.key<=to); }
+function filtered(){ return RAW.filter(r=>inRange(r,filter.from,filter.to)); }
+function aggBySku(rows){
+  const m=new Map();
+  for(const r of rows){ const o=m.get(r.sku)||{sku:r.sku,qty:0,days:new Set(),max:0,maxDay:''}; o.qty+=r.qty; o.days.add(r.key); if(r.qty>o.max){o.max=r.qty;o.maxDay=r.label;} m.set(r.sku,o); }
+  return [...m.values()].map(o=>({...o,days:o.days.size})).sort((a,b)=>b.qty-a.qty||a.sku.localeCompare(b.sku));
+}
+function aggByDay(rows){
+  const m=new Map();
+  for(const r of rows){ const o=m.get(r.key)||{key:r.key,label:r.label,qty:0,skus:new Set()}; o.qty+=r.qty; o.skus.add(r.sku); m.set(r.key,o); }
+  return [...m.values()].sort((a,b)=>a.key.localeCompare(b.key));
+}
+function periodBounds(rows){ const ks=rows.map(r=>r.key); return {from:ks.length?ks.reduce((a,b)=>a<b?a:b):null,to:ks.length?ks.reduce((a,b)=>a>b?a:b):null}; }
+function rangeOfMonth(mk){ const [y,m]=mk.split('-').map(Number); return {from:`${y}-${pad(m)}-01`, to:`${y}-${pad(m)}-${pad(new Date(y,m,0).getDate())}`}; }
+function periodText(from,to){ if(!from) return '—'; const a=parseKey(from), b=parseKey(to); return `${fmtDateY(a)} – ${fmtDateY(b)}`; }
+function currentPeriodLabel(){ return filter.monthKey && filter.monthKey!=='all' ? monthLabel(filter.monthKey) : (filter.monthKey==='all'?'Todo o histórico':'Período personalizado'); }
+
+/* ============ CHART DEFAULTS ============ */
+function chartTheme(){
+  Chart.defaults.font.family='Inter,system-ui,sans-serif';
+  Chart.defaults.font.size=11.5;
+  Chart.defaults.color=cssVar('--muted');
+  Chart.defaults.borderColor=cssVar('--grid');
+  Chart.defaults.plugins.legend.display=false;
+  Chart.defaults.plugins.tooltip.backgroundColor=cssVar('--ink');
+  Chart.defaults.plugins.tooltip.titleColor=cssVar('--page');
+  Chart.defaults.plugins.tooltip.bodyColor=cssVar('--page');
+  Chart.defaults.plugins.tooltip.padding=10;
+  Chart.defaults.plugins.tooltip.cornerRadius=8;
+  Chart.defaults.plugins.tooltip.displayColors=true;
+  Chart.defaults.plugins.tooltip.boxPadding=4;
+  Chart.defaults.animation.duration=250;
+}
+function mk(id, cfg){
+  if(charts[id]) charts[id].destroy();
+  const ctx=document.getElementById(id);
+  if(!ctx) return;
+  charts[id]=new Chart(ctx,cfg);
+}
+const gridX={grid:{display:false},border:{color:cssVar('--axis')},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:12}};
+const gridY=()=>({grid:{color:cssVar('--grid')},border:{display:false},ticks:{callback:v=>fmt(v),maxTicksLimit:6},beginAtZero:true});
+
+/* ============ RENDER: OVERVIEW ============ */
+function renderOverview(){
+  const rows=filtered(); const bySku=aggBySku(rows); const byDay=aggByDay(rows);
+  const total=sum(rows.map(r=>r.qty));
+  // previous period of same length for delta
+  let prevTxt='', cls='';
+  if(filter.from&&filter.to){
+    const a=parseKey(filter.from), b=parseKey(filter.to); const len=Math.round((b-a)/864e5)+1;
+    const pb=new Date(a); pb.setDate(pb.getDate()-1); const pa=new Date(pb); pa.setDate(pa.getDate()-len+1);
+    const prev=RAW.filter(r=>inRange(r,keyOf(pa),keyOf(pb))); const pt=sum(prev.map(r=>r.qty));
+    if(pt>0){ const d=(total-pt)/pt; cls=d>=0?'up':'down'; prevTxt=`${d>=0?'▲':'▼'} ${pct(Math.abs(d))} vs. ${len} dias anteriores (${fmt(pt)})`; }
+  }
+  const top=bySku[0];
+  const tiles=[
+    {l:'Unidades saídas',v:fmt(total),d:prevTxt,c:cls},
+    {l:'SKUs com saída',v:fmt(bySku.length),d:`${fmt(rows.length)} lançamentos`},
+    {l:'Média por dia registrado',v:byDay.length?fmt(total/byDay.length):'0',d:`${byDay.length} dias com registro`},
+    {l:'SKU líder',v:top?top.sku:'—',d:top?`${fmt(top.qty)} un · ${pct(top.qty/total)} do total`:''},
+  ];
+  $('#tiles').innerHTML=tiles.map(t=>`<div class="card tile"><div class="lbl">${t.l}</div><div class="val num">${t.v}</div><div class="delta ${t.c||''}">${t.d||''}</div></div>`).join('');
+
+  const S=SERIES();
+  // daily
+  mk('c-daily',{type:'bar',data:{labels:byDay.map(d=>d.label),datasets:[{data:byDay.map(d=>d.qty),backgroundColor:S[0],borderRadius:4,borderSkipped:'bottom',maxBarThickness:28,barPercentage:.8,categoryPercentage:.85}]},
+    options:{maintainAspectRatio:false,scales:{x:gridX,y:gridY()},plugins:{tooltip:{callbacks:{label:c=>` ${fmt(c.raw)} unidades · ${byDay[c.dataIndex].skus.size} SKUs`}}}}});
+  // top 10
+  const t10=bySku.slice(0,10);
+  mk('c-top',{type:'bar',data:{labels:t10.map(s=>s.sku),datasets:[{data:t10.map(s=>s.qty),backgroundColor:S[0],borderRadius:4,borderSkipped:'left',maxBarThickness:18}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{...gridY(),grid:{color:cssVar('--grid')}},y:{grid:{display:false},border:{display:false}}},plugins:{tooltip:{callbacks:{label:c=>` ${fmt(c.raw)} un · ${pct(c.raw/total)}`}}}}});
+  // concentration
+  const n=bySku.length; const cuts=[0.05,0.10,0.20,0.50];
+  const conc=cuts.map(c=>{const k=Math.max(1,Math.round(n*c)); return sum(bySku.slice(0,k).map(s=>s.qty))/(total||1);});
+  const seq=[cssVar('--seq5'),cssVar('--seq4'),cssVar('--seq3'),cssVar('--seq2')];
+  mk('c-conc',{type:'bar',data:{labels:cuts.map(c=>`Top ${c*100}% dos SKUs`),datasets:[{data:conc.map(v=>v*100),backgroundColor:seq,borderRadius:4,borderSkipped:'left',maxBarThickness:20}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{max:100,grid:{color:cssVar('--grid')},border:{display:false},ticks:{callback:v=>v+'%'}},y:{grid:{display:false},border:{display:false}}},plugins:{tooltip:{callbacks:{label:c=>` ${Math.round(n*cuts[c.dataIndex])||1} SKUs respondem por ${pct(c.raw/100)} do volume`}}}}});
+  $('#conc-legend').innerHTML=`<span>${fmt(n)} SKUs no período · ${Math.max(1,Math.round(n*.2))} SKUs (20%) = ${pct(conc[2])} das unidades</span>`;
+  // day of week
+  const dow=[0,0,0,0,0,0,0], dowN=[0,0,0,0,0,0,0];
+  for(const d of byDay){ const w=parseKey(d.key).getDay(); dow[w]+=d.qty; dowN[w]++; }
+  const order=[1,2,3,4,5,6,0];
+  mk('c-dow',{type:'bar',data:{labels:order.map(i=>DOW[i]),datasets:[{data:order.map(i=>dowN[i]?dow[i]/dowN[i]:0),backgroundColor:S[0],borderRadius:4,borderSkipped:'bottom',maxBarThickness:34}]},
+    options:{maintainAspectRatio:false,scales:{x:gridX,y:gridY()},plugins:{tooltip:{callbacks:{label:c=>` média ${fmt(c.raw)} un/dia · ${dowN[order[c.dataIndex]]} registros`}}}}});
+}
+
+/* ============ RENDER: RANKING ============ */
+function renderRanking(){
+  const rows=filtered(); let bySku=aggBySku(rows); const total=sum(rows.map(r=>r.qty));
+  if(rank.q) bySku=bySku.filter(s=>s.sku.toLowerCase().includes(rank.q.toLowerCase()));
+  const list=rank.mode==='top'?bySku.slice(0,rank.n):bySku.slice(-rank.n).reverse();
+  $('#rank-title').textContent=(rank.mode==='top'?'Mais vendidos':'Menos vendidos')+' · '+currentPeriodLabel();
+  $('#rank-count').textContent=`${bySku.length} SKUs`;
+  const S=SERIES();
+  mk('c-rank',{type:'bar',data:{labels:list.map(s=>s.sku),datasets:[{data:list.map(s=>s.qty),backgroundColor:rank.mode==='top'?S[0]:S[1],borderRadius:4,borderSkipped:'left',maxBarThickness:14}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{...gridY(),grid:{color:cssVar('--grid')}},y:{grid:{display:false},border:{display:false},ticks:{autoSkip:false,font:{size:10.5}}}},plugins:{tooltip:{callbacks:{label:c=>` ${fmt(c.raw)} un · ${pct(c.raw/total)}`}}}}});
+  const max=list[0]?Math.max(...list.map(s=>s.qty)):1;
+  const rows2=(rank.mode==='top'?bySku:bySku.slice().reverse());
+  fillTable('t-rank',rows2.map((s,i)=>[i+1,s.sku,s.qty,s.qty/total,s.days,s.qty/s.days,`${fmt(s.max)} (${s.maxDay})`]),
+    [{},{},{r:1,f:v=>`<span class="bar" style="width:${Math.max(3,60*v/max)}px"></span>${fmt(v)}`},{r:1,f:v=>pct(v)},{r:1,f:fmt},{r:1,f:fmt1},{r:1}]);
+}
+
+/* ============ RENDER: ABC ============ */
+function abcClassify(bySku,total){
+  let acc=0; return bySku.map(s=>{acc+=s.qty; const c=acc/total; return {...s,cum:c,cls:c<=abc.A/100?'A':(c<=abc.B/100?'B':'C')};});
+}
+function renderABC(){
+  const rows=filtered(); const bySku=aggBySku(rows); const total=sum(rows.map(r=>r.qty))||1;
+  const cl=abcClassify(bySku,total);
+  // ensure at least first item is A
+  if(cl.length&&cl[0].cls!=='A') cl[0].cls='A';
+  const g={A:cl.filter(x=>x.cls==='A'),B:cl.filter(x=>x.cls==='B'),C:cl.filter(x=>x.cls==='C')};
+  const S=SERIES(); const col={A:S[0],B:S[3],C:cssVar('--axis')};
+  $('#abc-tiles').innerHTML=['A','B','C'].map(k=>{const q=sum(g[k].map(x=>x.qty));return `<div class="card tile"><div class="lbl"><span class="tag ${k}">Classe ${k}</span> &nbsp;${k==='A'?'alto giro':k==='B'?'giro médio':'cauda longa'}</div><div class="val num">${fmt(g[k].length)}<small>SKUs · ${pct(g[k].length/(cl.length||1),0)}</small></div><div class="delta">${fmt(q)} unidades · ${pct(q/total)} do volume</div></div>`;}).join('');
+  mk('c-abc',{type:'line',data:{labels:cl.map((x,i)=>i+1),datasets:[
+      {data:cl.map(x=>x.cum*100),borderColor:S[0],borderWidth:2,pointRadius:0,pointHitRadius:8,fill:{target:'origin',above:alpha(S[0],.08)},tension:.15,yAxisID:'y'}]},
+    options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      scales:{x:{...gridX,title:{display:true,text:'SKUs ordenados por volume',color:cssVar('--muted')},ticks:{maxTicksLimit:10}},y:{min:0,max:100,grid:{color:cssVar('--grid')},border:{display:false},ticks:{callback:v=>v+'%'}}},
+      plugins:{tooltip:{callbacks:{title:c=>`#${c[0].label} · SKU ${cl[c[0].dataIndex].sku}`,label:c=>` acumulado ${pct(c.raw/100)} · classe ${cl[c.dataIndex].cls} · ${fmt(cl[c.dataIndex].qty)} un`}},
+        abcLines:{A:abc.A,B:abc.B,colB:col.B,colA:col.A,nA:g.A.length,nB:g.A.length+g.B.length}}}
+    ,plugins:[{id:'abcLines',afterDraw(ch,_,o){const {ctx,chartArea:{top,bottom,left,right},scales:{x,y}}=ch; ctx.save(); ctx.setLineDash([4,4]); ctx.lineWidth=1;
+      [[o.A,o.colA,o.nA],[o.B,o.colB,o.nB]].forEach(([v,c,n])=>{ctx.strokeStyle=c; const yy=y.getPixelForValue(v); ctx.beginPath(); ctx.moveTo(left,yy); ctx.lineTo(right,yy); ctx.stroke();
+        if(n>0&&n<=x.max+1){const xx=x.getPixelForValue(n-1); ctx.beginPath(); ctx.moveTo(xx,top); ctx.lineTo(xx,bottom); ctx.stroke();}
+        ctx.fillStyle=cssVar('--ink-2'); ctx.font='11px Inter,sans-serif'; ctx.fillText(`${v}% · ${n} SKUs`,left+6,yy-4);}); ctx.restore();}}]});
+  mk('c-abcbar',{type:'bar',data:{labels:['Classe A','Classe B','Classe C'],datasets:[
+      {label:'% dos SKUs',data:['A','B','C'].map(k=>g[k].length/(cl.length||1)*100),backgroundColor:cssVar('--seq2'),borderRadius:4,borderSkipped:'bottom',maxBarThickness:36},
+      {label:'% do volume',data:['A','B','C'].map(k=>sum(g[k].map(x=>x.qty))/total*100),backgroundColor:S[0],borderRadius:4,borderSkipped:'bottom',maxBarThickness:36}]},
+    options:{maintainAspectRatio:false,scales:{x:gridX,y:{max:100,grid:{color:cssVar('--grid')},border:{display:false},ticks:{callback:v=>v+'%'}}},plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${pct(c.raw/100)}`}}}}});
+  fillTable('t-abc',cl.map((x,i)=>[i+1,x.sku,x.cls,x.qty,x.qty/total,x.cum]),[{},{},{f:v=>`<span class="tag ${v}">${v}</span>`},{r:1,f:fmt},{r:1,f:v=>pct(v)},{r:1,f:v=>pct(v)}]);
+}
+
+/* ============ RENDER: COMPARE ============ */
+function cmpRange(p){
+  if(p.preset&&p.preset!=='custom') return rangeOfMonth(p.preset);
+  return {from:p.from,to:p.to};
+}
+function cmpLabel(p){ if(p.preset&&p.preset!=='custom') return monthLabel(p.preset); return periodText(p.from,p.to); }
+function renderCompare(){
+  const ra=cmpRange(cmp.A), rb=cmpRange(cmp.B);
+  const A=aggBySku(RAW.filter(r=>inRange(r,ra.from,ra.to))), B=aggBySku(RAW.filter(r=>inRange(r,rb.from,rb.to)));
+  const ta=sum(A.map(x=>x.qty)), tb=sum(B.map(x=>x.qty));
+  const m=new Map(); for(const x of A) m.set(x.sku,{sku:x.sku,a:x.qty,b:0}); for(const x of B){const o=m.get(x.sku)||{sku:x.sku,a:0,b:0}; o.b=x.qty; m.set(x.sku,o);}
+  let list=[...m.values()].map(o=>({...o,d:o.b-o.a,p:o.a?(o.b-o.a)/o.a:null,st:o.a&&!o.b?'Parou':(!o.a&&o.b?'Novo':(o.b>o.a?'Alta':(o.b<o.a?'Queda':'Estável')))}));
+  const novos=list.filter(x=>x.st==='Novo').length, parou=list.filter(x=>x.st==='Parou').length;
+  $('#cmp-sub').textContent=`A: ${cmpLabel(cmp.A)} · B: ${cmpLabel(cmp.B)}`;
+  const dd=ta?(tb-ta)/ta:0;
+  const daysA=new Set(RAW.filter(r=>inRange(r,ra.from,ra.to)).map(r=>r.key)).size, daysB=new Set(RAW.filter(r=>inRange(r,rb.from,rb.to)).map(r=>r.key)).size;
+  const avgA=daysA?ta/daysA:0, avgB=daysB?tb/daysB:0, da=avgA?(avgB-avgA)/avgA:0;
+  $('#cmp-tiles').innerHTML=[
+    {l:'Período A',v:fmt(ta),d:cmpLabel(cmp.A)+` · ${A.length} SKUs · ${daysA} dias · ${fmt(avgA)}/dia`},
+    {l:'Período B',v:fmt(tb),d:cmpLabel(cmp.B)+` · ${B.length} SKUs · ${daysB} dias · ${fmt(avgB)}/dia`},
+    {l:'Variação total',v:(dd>=0?'+':'')+pct(dd),d:`${dd>=0?'+':''}${fmt(tb-ta)} un · por dia registrado: ${da>=0?'+':''}${pct(da)}`,c:dd>=0?'up':'down'},
+    {l:'Movimentação de mix',v:`${novos} <small>novos</small> ${parou} <small>pararam</small>`,d:'SKUs que só aparecem em um dos períodos'},
+  ].map(t=>`<div class="card tile"><div class="lbl">${t.l}</div><div class="val num">${t.v}</div><div class="delta ${t.c||''}">${t.d}</div></div>`).join('');
+  const S=SERIES();
+  const up=list.filter(x=>x.d>0).sort((x,y)=>y.d-x.d).slice(0,10), down=list.filter(x=>x.d<0).sort((x,y)=>x.d-y.d).slice(0,10);
+  const barOpts=(arr,c)=>({type:'bar',data:{labels:arr.map(x=>x.sku),datasets:[{data:arr.map(x=>x.d),backgroundColor:c,borderRadius:4,borderSkipped:false,maxBarThickness:16}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{grid:{color:cssVar('--grid')},border:{display:false},ticks:{callback:v=>(v>0?'+':'')+fmt(v)}},y:{grid:{display:false},border:{display:false}}},
+      plugins:{tooltip:{callbacks:{label:c=>{const x=arr[c.dataIndex];return ` ${fmt(x.a)} → ${fmt(x.b)} (${x.p===null?'novo':(x.p>=0?'+':'')+pct(x.p)})`;}}}}}});
+  mk('c-cmpup',barOpts(up,cssVar('--good')==='#006300'?'#1baf7a':cssVar('--good')));
+  mk('c-cmpdown',barOpts(down,S[7]));
+  if(cmp.q) list=list.filter(x=>x.sku.toLowerCase().includes(cmp.q.toLowerCase()));
+  list.sort((x,y)=>Math.abs(y.d)-Math.abs(x.d));
+  fillTable('t-cmp',list.map(x=>[x.sku,x.a,x.b,x.d,x.p,x.st]),[{},{r:1,f:fmt},{r:1,f:fmt},{r:1,f:v=>`<span class="${v>0?'pos':v<0?'neg':''}">${v>0?'+':''}${fmt(v)}</span>`},{r:1,f:v=>v===null?'—':`<span class="${v>0?'pos':v<0?'neg':''}">${v>0?'+':''}${pct(v)}</span>`},{}]);
+}
+
+/* ============ RENDER: SKUS ============ */
+function bucketsFor(rows){
+  const ks=[...new Set(rows.map(r=>gran==='day'?r.key:gran==='week'?weekKey(r.date):monthKey(r.date)))].sort();
+  const lab=k=>gran==='day'?(aggByDay(rows).find(d=>d.key===k)||{}).label||fmtDate(parseKey(k)):gran==='week'?'sem. '+fmtDate(parseKey(k)):MON3[+k.split('-')[1]-1]+'/'+k.slice(2,4);
+  return {keys:ks,labels:ks.map(lab)};
+}
+function renderSkus(){
+  const rows=filtered(); const {keys,labels}=bucketsFor(rows);
+  const S=SERIES();
+  $('#skuchips').innerHTML=skuSel.map((s,i)=>`<span class="chip"><i style="background:${S[i%8]}"></i>${esc(s)}<button data-i="${i}" title="Remover">×</button></span>`).join('')||'<span class="kbd">Nenhum SKU selecionado — digite acima ou use o top 5.</span>';
+  $$('#skuchips button').forEach(b=>b.onclick=()=>{skuSel.splice(+b.dataset.i,1);renderSkus();});
+  const ds=skuSel.slice(0,8).map((s,i)=>{
+    const m={}; for(const r of rows) if(r.sku===s){const k=gran==='day'?r.key:gran==='week'?weekKey(r.date):monthKey(r.date); m[k]=(m[k]||0)+r.qty;}
+    let data=keys.map(k=>m[k]||0);
+    if(skuMode==='idx'){const base=data.find(v=>v>0)||1; data=data.map(v=>v/base*100);}
+    return {label:s,data,borderColor:S[i],backgroundColor:S[i],borderWidth:2,pointRadius:3,pointHoverRadius:5,pointBorderColor:cssVar('--surface'),pointBorderWidth:1.5,tension:.25,spanGaps:true};
+  });
+  $('#sku-sub').textContent=`${gran==='day'?'por lançamento':gran==='week'?'por semana':'por mês'} · ${skuMode==='idx'?'índice, primeiro valor = 100':'unidades'}`;
+  mk('c-sku',{type:'line',data:{labels,datasets:ds},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    scales:{x:gridX,y:{...gridY(),ticks:{callback:v=>skuMode==='idx'?v:fmt(v),maxTicksLimit:6}}},
+    plugins:{legend:{display:ds.length>1,position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'circle'}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${skuMode==='idx'?fmt1(c.raw):fmt(c.raw)}`}}}}});
+  // stats
+  const stats=skuSel.map(s=>{
+    const rr=rows.filter(r=>r.sku===s).sort((a,b)=>a.key.localeCompare(b.key)); const q=rr.map(r=>r.qty); const t=sum(q); const n=q.length||1; const mean=t/n;
+    const sd=Math.sqrt(sum(q.map(v=>(v-mean)**2))/n); const cv=mean?sd/mean:0;
+    const half=Math.floor(rr.length/2); const h1=sum(rr.slice(0,half).map(r=>r.qty)), h2=sum(rr.slice(half).map(r=>r.qty));
+    const tr=h1?(h2-h1)/h1:null; const last=rr[rr.length-1];
+    return [s,t,rr.length,mean,q.length?Math.min(...q):0,q.length?Math.max(...q):0,cv,tr,last?`${last.label} · ${fmt(last.qty)} un`:'—'];
+  });
+  fillTable('t-sku',stats,[{},{r:1,f:fmt},{r:1,f:fmt},{r:1,f:fmt1},{r:1,f:fmt},{r:1,f:fmt},{r:1,f:v=>pct(v,0)},{r:1,f:v=>v===null?'—':`<span class="${v>0?'pos':v<0?'neg':''}">${v>0?'▲':v<0?'▼':'•'} ${pct(Math.abs(v),0)}</span>`},{}]);
+  // heatmap by week
+  const wk=[...new Set(rows.map(r=>weekKey(r.date)))].sort();
+  const hm=$('#hm'); if(!skuSel.length||!wk.length){hm.innerHTML='<div class="empty">Selecione SKUs para ver o mapa de calor.</div>';return;}
+  const grid={}; let mx=0; for(const r of rows) if(skuSel.includes(r.sku)){const k=r.sku+'|'+weekKey(r.date); grid[k]=(grid[k]||0)+r.qty; mx=Math.max(mx,grid[k]);}
+  hm.style.gridTemplateColumns=`80px repeat(${wk.length},1fr)`;
+  const seq=[cssVar('--seq1'),cssVar('--seq2'),cssVar('--seq3'),cssVar('--seq4'),cssVar('--seq5'),cssVar('--seq6')];
+  let h='<div class="lab"></div>'+wk.map(k=>`<div class="lab" style="justify-content:center">${fmtDate(parseKey(k))}</div>`).join('');
+  for(const s of skuSel){ h+=`<div class="lab">${esc(s)}</div>`+wk.map(k=>{const v=grid[s+'|'+k]||0; const i=v?Math.min(5,Math.floor(v/mx*5.999)):-1; const bg=i<0?'var(--surface-2)':seq[i]; const ink=i>=3?(cssVar('--page')):'var(--ink)'; return `<div class="cell" style="background:${bg};color:${ink}" title="${esc(s)} · semana de ${fmtDate(parseKey(k))}: ${fmt(v)}">${v?fmt(v):''}</div>`;}).join(''); }
+  hm.innerHTML=h;
+}
+
+/* ============ RENDER: DATA ============ */
+function renderData(){
+  const rows=filtered(); const q=dataQ.toLowerCase();
+  const thead=$('#t-data thead'), tb=$('#t-data tbody');
+  if(dataView==='rows'){
+    const list=rows.filter(r=>!q||r.sku.toLowerCase().includes(q)||r.label.includes(q)).sort((a,b)=>a.key.localeCompare(b.key)||a.sku.localeCompare(b.sku));
+    thead.innerHTML='<tr><th>Data</th><th>Lançamento</th><th>SKU</th><th class="r">Quantidade</th></tr>';
+    tb.innerHTML=list.slice(0,3000).map(r=>`<tr><td class="num">${fmtDateY(r.date)}</td><td>${esc(r.label)}</td><td>${esc(r.sku)}</td><td class="r num">${fmt(r.qty)}</td></tr>`).join('');
+    $('#data-count').textContent=`${fmt(list.length)} lançamentos`;
+  } else {
+    const mks=[...new Set(rows.map(r=>monthKey(r.date)))].sort();
+    const m={}; for(const r of rows){const o=m[r.sku]=m[r.sku]||{}; const k=monthKey(r.date); o[k]=(o[k]||0)+r.qty;}
+    let list=Object.keys(m).filter(s=>!q||s.toLowerCase().includes(q)).map(s=>({sku:s,tot:sum(Object.values(m[s])),v:m[s]})).sort((a,b)=>b.tot-a.tot);
+    thead.innerHTML='<tr><th>SKU</th>'+mks.map(k=>`<th class="r">${MON3[+k.split('-')[1]-1]}/${k.slice(0,4)}</th>`).join('')+'<th class="r">Total</th></tr>';
+    tb.innerHTML=list.map(o=>`<tr><td>${esc(o.sku)}</td>${mks.map(k=>`<td class="r num">${o.v[k]?fmt(o.v[k]):'<span style="color:var(--muted)">·</span>'}</td>`).join('')}<td class="r num"><b>${fmt(o.tot)}</b></td></tr>`).join('');
+    $('#data-count').textContent=`${fmt(list.length)} SKUs`;
+  }
+  $('#datanote').innerHTML=`<b>Fonte:</b> aba "saídas diárias" da planilha, lida ao vivo (${BLOCKS.length} lançamentos/dias, ${fmt(RAW.length)} linhas). Cada bloco entra na data do <b>primeiro dia</b> do título (ex.: "28/08 a 1/9" conta em 28/08). `+
+    (VARIANTS.length?`<br><b>Grafias diferentes tratadas como SKUs distintos:</b> ${VARIANTS.map(v=>v.join(' / ')).join(' · ')}.`:'');
+}
+
+/* ============ TABLE UTIL ============ */
+function fillTable(id, rows, cols){
+  const t=document.getElementById(id); const tb=t.querySelector('tbody'); const ths=[...t.querySelectorAll('th')];
+  const st=sortState[id];
+  if(st){ rows=rows.slice().sort((a,b)=>{const x=a[st.i],y=b[st.i]; const c=(typeof x==='number'&&typeof y==='number')?x-y:String(x??'').localeCompare(String(y??''),'pt-BR',{numeric:true}); return st.asc?c:-c;}); }
+  ths.forEach((th,i)=>{th.classList.toggle('sorted',!!st&&st.i===i);th.classList.toggle('asc',!!st&&st.i===i&&st.asc);th.onclick=()=>{sortState[id]=st&&st.i===i?{i,asc:!st.asc}:{i,asc:false};render();};});
+  tb.innerHTML=rows.slice(0,2000).map(r=>'<tr>'+r.map((v,i)=>{const c=cols[i]||{};return `<td class="${c.r?'r num':''}">${c.f?c.f(v):esc(v??'')}</td>`;}).join('')+'</tr>').join('')||`<tr><td colspan="${cols.length}" class="empty">Sem dados no período.</td></tr>`;
+  t._rows=rows; t._cols=cols;
+}
+
+/* ============ EXPORT: EXCEL ============ */
+function exportXlsx(){
+  const rows=filtered(); const bySku=aggBySku(rows); const total=sum(rows.map(r=>r.qty)); const byDay=aggByDay(rows);
+  const wb=XLSX.utils.book_new();
+  const per=periodText(filter.from,filter.to);
+  const resumo=[['RELATÓRIO GERAL DE SAÍDAS — CENTRALUX'],['Período',per],['Gerado em',new Date().toLocaleString('pt-BR')],[],
+    ['Indicador','Valor'],['Unidades saídas',total],['SKUs com saída',bySku.length],['Lançamentos',rows.length],['Dias com registro',byDay.length],['Média por dia',byDay.length?Math.round(total/byDay.length):0],['SKU líder',bySku[0]?bySku[0].sku:'—'],['Unidades do líder',bySku[0]?bySku[0].qty:0]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(resumo),'Resumo Executivo');
+  const cl=abcClassify(bySku,total||1);
+  const rk=[['#','SKU','Classe','Unidades','Share','Acumulado','Dias c/ saída','Média/dia ativo','Maior dia']].concat(cl.map((x,i)=>[i+1,x.sku,x.cls,x.qty,x.qty/total,x.cum,x.days,+(x.qty/x.days).toFixed(1),x.max]));
+  const ws2=XLSX.utils.aoa_to_sheet(rk); for(let i=1;i<rk.length;i++){ ['E','F'].forEach(c=>{const cell=ws2[c+(i+1)]; if(cell) cell.z='0.0%';}); }
+  XLSX.utils.book_append_sheet(wb,ws2,'Ranking e Curva ABC');
+  const ra=cmpRange(cmp.A), rb=cmpRange(cmp.B);
+  const A=aggBySku(RAW.filter(r=>inRange(r,ra.from,ra.to))), B=aggBySku(RAW.filter(r=>inRange(r,rb.from,rb.to)));
+  const m=new Map(); for(const x of A) m.set(x.sku,{sku:x.sku,a:x.qty,b:0}); for(const x of B){const o=m.get(x.sku)||{sku:x.sku,a:0,b:0}; o.b=x.qty; m.set(x.sku,o);}
+  const cmpRows=[['SKU',`A: ${cmpLabel(cmp.A)}`,`B: ${cmpLabel(cmp.B)}`,'Variação','Var. %']].concat([...m.values()].sort((x,y)=>Math.abs(y.b-y.a)-Math.abs(x.b-x.a)).map(o=>[o.sku,o.a,o.b,o.b-o.a,o.a?(o.b-o.a)/o.a:'novo']));
+  const ws3=XLSX.utils.aoa_to_sheet(cmpRows); for(let i=1;i<cmpRows.length;i++){const c=ws3['E'+(i+1)]; if(c&&typeof c.v==='number') c.z='0.0%';}
+  XLSX.utils.book_append_sheet(wb,ws3,'Comparativo');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Data','Lançamento','Unidades','SKUs distintos']].concat(byDay.map(d=>[fmtDateY(parseKey(d.key)),d.label,d.qty,d.skus.size]))),'Evolução Diária');
+  if(skuSel.length){
+    const {keys,labels}=bucketsFor(rows);
+    const hdr=['Período'].concat(skuSel); const body=keys.map((k,i)=>[labels[i]].concat(skuSel.map(s=>sum(rows.filter(r=>r.sku===s&&(gran==='day'?r.key:gran==='week'?weekKey(r.date):monthKey(r.date))===k).map(r=>r.qty)))));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([hdr].concat(body)),'Análise de SKUs');
+  }
+  const notas=[['Notas'],['Fonte: planilha Google Sheets, aba "saídas diárias" (leitura ao vivo).'],['Cada bloco de lançamento entra na data do primeiro dia do título (ex.: "28/08 a 1/9" conta em 28/08).'],['SKUs com grafia diferente NÃO foram somados entre si:']].concat(VARIANTS.map(v=>['  '+v.join(' / ')]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(notas),'Notas');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Data','Lançamento','SKU','Quantidade']].concat(rows.sort((a,b)=>a.key.localeCompare(b.key)).map(r=>[fmtDateY(r.date),r.label,r.sku,r.qty]))),'Dados');
+  const wsR=wb.Sheets['Resumo Executivo']; wsR['!cols']=[{wch:22},{wch:28}]; ws2['!cols']=[{wch:5},{wch:12},{wch:8},{wch:11},{wch:9},{wch:11},{wch:13},{wch:15},{wch:10}]; ws3['!cols']=[{wch:12},{wch:22},{wch:22},{wch:11},{wch:10}];
+  const name=`saidas_${(filter.from||'').replace(/-/g,'')}_${(filter.to||'').replace(/-/g,'')}.xlsx`;
+  XLSX.writeFile(wb,name);
+}
+
+/* ============ NAV / FILTERS ============ */
+const TITLES={overview:'Visão geral',ranking:'Ranking de SKUs',abc:'Curva ABC',compare:'Comparativo de períodos',skus:'Análise de SKUs',data:'Dados'};
+function showSec(s){ sec=s; $$('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.sec===s)); $$('.section').forEach(x=>x.classList.toggle('active',x.id==='sec-'+s)); $('#pagetitle').textContent=TITLES[s]; render(); }
+$$('.nav a').forEach(a=>a.onclick=()=>showSec(a.dataset.sec));
+
+function buildMonthSeg(){
+  const seg=$('#monthseg'); seg.innerHTML='';
+  const items=months.map(m=>({k:m,l:MON3[+m.split('-')[1]-1].toUpperCase()+'/'+m.slice(2,4)})).concat([{k:'all',l:'Tudo'}]);
+  for(const it of items){ const b=document.createElement('button'); b.textContent=it.l; b.dataset.k=it.k; b.onclick=()=>setMonth(it.k); seg.appendChild(b); }
+}
+function setMonth(k){
+  filter.monthKey=k;
+  if(k==='all'){ const b=periodBounds(RAW); filter.from=b.from; filter.to=b.to; }
+  else { const r=rangeOfMonth(k); const b=periodBounds(RAW.filter(x=>inRange(x,r.from,r.to))); filter.from=b.from||r.from; filter.to=b.to||r.to; }
+  syncFilterUI(); render();
+}
+function syncFilterUI(){
+  $$('#monthseg button').forEach(b=>b.classList.toggle('on',b.dataset.k===filter.monthKey));
+  $('#dfrom').value=filter.from||''; $('#dto').value=filter.to||'';
+  $('#periodtxt').textContent=`${currentPeriodLabel()} · ${periodText(filter.from,filter.to)}`;
+}
+$('#dfrom').onchange=$('#dto').onchange=()=>{ filter.from=$('#dfrom').value||filter.from; filter.to=$('#dto').value||filter.to; if(filter.from>filter.to){[filter.from,filter.to]=[filter.to,filter.from];} filter.monthKey='custom'; syncFilterUI(); render(); };
+
+function buildCmpUI(){
+  for(const [id,p] of [['cmpA',cmp.A],['cmpB',cmp.B]]){
+    const sel=$('#'+id); sel.innerHTML=months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('')+'<option value="custom">Personalizado…</option>';
+    sel.value=p.preset; const f=$('#'+id+'from'), t=$('#'+id+'to'); const r=cmpRange(p); f.value=r.from||''; t.value=r.to||'';
+    f.style.display=t.style.display=p.preset==='custom'?'':'none'; f.previousElementSibling&&(f.previousElementSibling.style.display='');
+    sel.onchange=()=>{ p.preset=sel.value; if(p.preset==='custom'){p.from=f.value||filter.from;p.to=t.value||filter.to;} buildCmpUI(); render(); };
+    f.onchange=t.onchange=()=>{ p.from=f.value; p.to=t.value; render(); };
+  }
+  $$('#sec-compare .field span').forEach(s=>{ const inp=s.previousElementSibling; s.style.display=inp&&inp.style.display==='none'?'none':''; });
+}
+
+/* ranking */
+$$('#rankmode button').forEach(b=>b.onclick=()=>{$$('#rankmode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');rank.mode=b.dataset.v;render();});
+$('#rankn').onchange=e=>{rank.n=Math.max(5,+e.target.value||20);render();};
+$('#ranksearch').oninput=e=>{rank.q=e.target.value;render();};
+/* abc */
+$('#abcA').onchange=e=>{abc.A=+e.target.value;if(abc.B<=abc.A){abc.B=Math.min(99,abc.A+10);$('#abcB').value=abc.B;}render();};
+$('#abcB').onchange=e=>{abc.B=+e.target.value;render();};
+/* compare */
+$('#cmpsearch').oninput=e=>{cmp.q=e.target.value;render();};
+/* skus */
+const skuInput=$('#skuinput'), sug=$('#skusug');
+function allSkus(){ return aggBySku(filtered()).map(s=>s.sku); }
+skuInput.oninput=()=>{ const q=skuInput.value.trim().toLowerCase(); if(!q){sug.style.display='none';return;} const l=allSkus().filter(s=>s.toLowerCase().includes(q)&&!skuSel.includes(s)).slice(0,12); sug.innerHTML=l.map(s=>`<div data-s="${esc(s)}">${esc(s)}</div>`).join(''); sug.style.display=l.length?'block':'none'; sug.style.top='38px'; $$('#skusug div').forEach(d=>d.onclick=()=>{addSku(d.dataset.s);}); };
+skuInput.onkeydown=e=>{ if(e.key==='Enter'){ const q=skuInput.value.trim(); const l=allSkus(); const hit=l.find(s=>s===q)||l.find(s=>s.toLowerCase().startsWith(q.toLowerCase())); if(hit) addSku(hit); } if(e.key==='Escape') sug.style.display='none'; };
+document.addEventListener('click',e=>{ if(!sug.contains(e.target)&&e.target!==skuInput) sug.style.display='none'; });
+function addSku(s){ if(!skuSel.includes(s)&&skuSel.length<8) skuSel.push(s); skuInput.value=''; sug.style.display='none'; render(); }
+$('#skutop5').onclick=()=>{ skuSel=allSkus().slice(0,5); render(); };
+$('#skuclear').onclick=()=>{ skuSel=[]; render(); };
+$$('#gran button').forEach(b=>b.onclick=()=>{$$('#gran button').forEach(x=>x.classList.remove('on'));b.classList.add('on');gran=b.dataset.v;render();});
+$$('#skumode button').forEach(b=>b.onclick=()=>{$$('#skumode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');skuMode=b.dataset.v;render();});
+/* data */
+$('#datasearch').oninput=e=>{dataQ=e.target.value;render();};
+$$('#dataview button').forEach(b=>b.onclick=()=>{$$('#dataview button').forEach(x=>x.classList.remove('on'));b.classList.add('on');dataView=b.dataset.v;render();});
+/* export */
+$('#btnxlsx').onclick=exportXlsx;
+$('#btnpdf').onclick=()=>{ $('#printhdr').textContent=`Centralux · Saídas diárias · ${TITLES[sec]} · ${currentPeriodLabel()} (${periodText(filter.from,filter.to)}) · gerado em ${new Date().toLocaleString('pt-BR')}`; window.print(); };
+$('#btnreload').onclick=()=>load(true);
+/* theme */
+$('#btntheme').onclick=()=>{ const cur=document.documentElement.dataset.theme; const sysDark=matchMedia('(prefers-color-scheme: dark)').matches; const isDark=cur==='dark'||(!cur&&sysDark); document.documentElement.dataset.theme=isDark?'light':'dark'; try{localStorage.setItem('theme',document.documentElement.dataset.theme);}catch(e){} chartTheme(); render(); };
+try{ const t=localStorage.getItem('theme'); if(t) document.documentElement.dataset.theme=t; }catch(e){}
+window.addEventListener('beforeprint',()=>Object.values(charts).forEach(c=>c.resize()));
+window.addEventListener('afterprint',()=>Object.values(charts).forEach(c=>c.resize()));
+
+function render(){
+  if(!RAW.length) return;
+  ({overview:renderOverview,ranking:renderRanking,abc:renderABC,compare:renderCompare,skus:renderSkus,data:renderData})[sec]();
+}
+
+/* ============ LOAD ============ */
+async function load(force){
+  const L=$('#loading'); if(force){L.style.display='flex';$('#loadmsg').textContent='Atualizando da planilha…';}
+  let text=null, fromCache=false;
+  try{
+    const res=await fetch(CSV_URL+'&_='+Date.now(),{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    text=await res.text();
+    try{ localStorage.setItem('csvcache',JSON.stringify({t:Date.now(),text})); }catch(e){}
+  }catch(err){
+    try{ const c=JSON.parse(localStorage.getItem('csvcache')||'null'); if(c){text=c.text;fromCache=c.t;} }catch(e){}
+    if(!text){ $('#loadmsg').innerHTML=`<div class="err">Não consegui ler a planilha (${esc(err.message)}).<br>Confira se ela está compartilhada como "qualquer pessoa com o link" e tente de novo.</div><button class="btn" onclick="load(true)" style="margin-top:10px">Tentar novamente</button>`; $('#statusdot').classList.add('off'); $('#statustxt').textContent='Sem conexão com a planilha'; return; }
+  }
+  const {blocks,raw}=buildModel(parseCSV(text));
+  BLOCKS=blocks; RAW=raw;
+  months=[...new Set(RAW.map(r=>monthKey(r.date)))].sort();
+  const first=!filter.monthKey;
+  buildMonthSeg();
+  if(first){
+    const last=months[months.length-1];
+    cmp.B={preset:last,from:null,to:null}; cmp.A={preset:months[months.length-2]||last,from:null,to:null};
+    setMonth(last);
+    skuSel=aggBySku(filtered()).slice(0,3).map(s=>s.sku);
+  } else { syncFilterUI(); }
+  buildCmpUI();
+  chartTheme(); render();
+  $('#statusdot').classList.toggle('off',!!fromCache);
+  $('#statustxt').textContent=fromCache?'Planilha offline — dados em cache':'Planilha conectada';
+  $('#lastupd').textContent=(fromCache?'cache de ':'lido às ')+new Date(fromCache||Date.now()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+` · ${BLOCKS.length} lançamentos`;
+  L.style.display='none';
+}
+load();
+</script>
+</body>
+</html>
