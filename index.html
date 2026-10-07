@@ -425,9 +425,12 @@ function aggByDay(rows){
   return [...m.values()].sort((a,b)=>a.key.localeCompare(b.key));
 }
 function periodBounds(rows){ const ks=rows.map(r=>r.key); return {from:ks.length?ks.reduce((a,b)=>a<b?a:b):null,to:ks.length?ks.reduce((a,b)=>a>b?a:b):null}; }
+/* Janela fixa: 3 últimos meses completos + mês atual (até hoje) */
+function windowMonths(){ const t=new Date(); const out=[]; for(let i=3;i>=0;i--) out.push(monthKey(new Date(t.getFullYear(),t.getMonth()-i,1))); return out; }
+function windowBounds(){ return {from:windowMonths()[0]+'-01', to:keyOf(new Date())}; }
 function rangeOfMonth(mk){ const [y,m]=mk.split('-').map(Number); return {from:`${y}-${pad(m)}-01`, to:`${y}-${pad(m)}-${pad(new Date(y,m,0).getDate())}`}; }
 function periodText(from,to){ if(!from) return '—'; const a=parseKey(from), b=parseKey(to); return `${fmtDateY(a)} – ${fmtDateY(b)}`; }
-function currentPeriodLabel(){ if(filter.monthKey==='all') return 'Todo o histórico'; if(filter.monthKey&&filter.monthKey!=='custom') return monthLabel(filter.monthKey); return 'Período personalizado'; }
+function currentPeriodLabel(){ if(filter.monthKey==='all') return 'Últimos 3 meses + mês atual'; if(filter.monthKey&&filter.monthKey!=='custom') return monthLabel(filter.monthKey); return 'Período personalizado'; }
 
 /* ============ CHART DEFAULTS ============ */
 function chartTheme(){
@@ -734,13 +737,16 @@ $$('.nav a').forEach(a=>a.onclick=()=>showSec(a.dataset.sec));
 
 function buildMonthSeg(){
   const seg=$('#monthseg'); seg.innerHTML='';
-  const items=months.map(m=>({k:m,l:MON3[+m.split('-')[1]-1].toUpperCase()+'/'+m.slice(2,4)})).concat([{k:'all',l:'Tudo'}]);
-  for(const it of items){ const b=document.createElement('button'); b.textContent=it.l; b.dataset.k=it.k; b.onclick=()=>setMonth(it.k); seg.appendChild(b); }
+  const has=new Set(RAW.map(r=>monthKey(r.date)));
+  const items=months.map(m=>({k:m,l:MON3[+m.split('-')[1]-1].toUpperCase()+'/'+m.slice(2,4),empty:!has.has(m)})).concat([{k:'all',l:'Tudo'}]);
+  for(const it of items){ const b=document.createElement('button'); b.textContent=it.l; b.dataset.k=it.k; b.onclick=()=>setMonth(it.k);
+    if(it.empty){ b.style.opacity='.45'; b.title='Sem lançamentos na planilha para este mês'; }
+    seg.appendChild(b); }
 }
 function setMonth(k){
   filter.monthKey=k;
-  if(k==='all'){ const b=periodBounds(RAW); filter.from=b.from; filter.to=b.to; }
-  else { const r=rangeOfMonth(k); const b=periodBounds(RAW.filter(x=>inRange(x,r.from,r.to))); filter.from=b.from||r.from; filter.to=b.to||r.to; }
+  if(k==='all'){ const w=windowBounds(); filter.from=w.from; filter.to=w.to; }
+  else { const r=rangeOfMonth(k); const w=windowBounds(); if(r.to>w.to) r.to=w.to; const b=periodBounds(RAW.filter(x=>inRange(x,r.from,r.to))); filter.from=b.from||r.from; filter.to=b.to||r.to; }
   syncFilterUI(); render();
 }
 function syncFilterUI(){
@@ -749,7 +755,7 @@ function syncFilterUI(){
   $('#periodtxt').textContent=`${currentPeriodLabel()} · ${periodText(filter.from,filter.to)}`;
 }
 $('#dfrom').onchange=$('#dto').onchange=()=>{
-  const b=periodBounds(RAW); const ok=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&v>=b.from&&v<=b.to;
+  const b=windowBounds(); const ok=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&v>=b.from&&v<=b.to;
   const f=$('#dfrom').value, t=$('#dto').value;
   filter.from=ok(f)?f:(f<b.from?b.from:filter.from); filter.to=ok(t)?t:(t>b.to?b.to:filter.to);
   if(filter.from>filter.to){[filter.from,filter.to]=[filter.to,filter.from];}
@@ -820,10 +826,10 @@ async function load(force){
   }
   const {blocks,raw}=buildModel(parseCSV(text));
   BLOCKS=blocks; RAW=raw;
-  months=[...new Set(RAW.map(r=>monthKey(r.date)))].sort();
+  months=windowMonths();
   const first=!filter.monthKey;
   buildMonthSeg();
-  { const b=periodBounds(RAW); $('#dfrom').min=$('#dto').min=b.from; $('#dfrom').max=$('#dto').max=b.to; }
+  { const b=windowBounds(); $('#dfrom').min=$('#dto').min=b.from; $('#dfrom').max=$('#dto').max=b.to; }
   if(first){
     const last=months[months.length-1];
     cmp.B={preset:last,from:null,to:null}; cmp.A={preset:months[months.length-2]||last,from:null,to:null};
