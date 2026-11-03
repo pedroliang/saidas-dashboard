@@ -296,7 +296,7 @@ tr:hover td{background:var(--surface-2)}
           <div class="card"><h3>Curva de Pareto <small>acumulado do volume por SKU ordenado</small></h3><div class="chart tall"><canvas id="c-abc"></canvas></div></div>
           <div class="card"><h3>Distribuição das classes</h3><div class="chart tall"><canvas id="c-abcbar"></canvas></div></div>
         </div>
-        <div class="card"><h3>Classificação completa</h3><div class="tbl"><table id="t-abc"><thead><tr><th>#</th><th>SKU</th><th>Classe</th><th class="r">Unidades</th><th class="r">Share</th><th class="r">Acumulado</th></tr></thead><tbody></tbody></table></div></div>
+        <div class="card"><h3>Classificação completa <small id="abc-stock-note"></small></h3><div class="tbl"><table id="t-abc"><thead><tr><th>#</th><th>SKU</th><th>Classe</th><th class="r">Unidades</th><th class="r">Share</th><th class="r">Acumulado</th><th class="r">Estoque MKT</th></tr></thead><tbody></tbody></table></div></div>
       </div>
     </section>
 
@@ -358,12 +358,16 @@ tr:hover td{background:var(--surface-2)}
 const SHEET_ID = '1fRqUo8vH4awjCwV12U0fhR2bdBSRGFUVMlU8PozUsoQ';
 const GID = '417397612';
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+const STOCK_GID = '961434769'; // aba "estoque mkt"
+const STOCK_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${STOCK_GID}`;
 const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const MON3 = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
 
 /* ============ STATE ============ */
 let RAW = [];      // {date:Date, key:'YYYY-MM-DD', label, sku, qty, block}
+let STOCK = new Map(); // sku -> total de unidades na aba estoque mkt
+let stockInfo = {ok:false, cache:0};
 let BLOCKS = [];   // {label, date, key, rows:[{sku,qty}]}
 let VARIANTS = []; // sku spellings that look like variants
 let months = [];   // ['2026-07', ...]
@@ -450,6 +454,23 @@ function buildModel(rows){
   VARIANTS=Object.values(bases).filter(v=>v.length>1);
   return {blocks,raw};
 }
+
+/* Aba estoque mkt: linha de cabeçalho "COD. | DESCRICAO | TOTAL UN | ...". SKU casa pela grafia exata. */
+function parseStock(rows){
+  const iH=rows.findIndex(r=>/^c[óo]d/i.test((r[0]||'').trim()));
+  if(iH<0) return new Map();
+  const iQ=rows[iH].findIndex(c=>/^total\s*un/i.test(c.trim()));
+  if(iQ<0) return new Map();
+  const m=new Map();
+  for(const r of rows.slice(iH+1)){
+    const sku=(r[0]||'').trim(), v=(r[iQ]||'').trim();
+    if(!sku||v==='') continue;
+    const q=parseFloat(v.replace(/\./g,'').replace(',','.'));
+    if(!isNaN(q)) m.set(sku,q);
+  }
+  return m;
+}
+const stockOf = sku => STOCK.has(sku)?STOCK.get(sku):null;
 
 /* ============ DATA ACCESS ============ */
 function inRange(r, from, to){ return (!from||r.key>=from) && (!to||r.key<=to); }
@@ -583,7 +604,9 @@ function renderABC(){
       {label:'% dos SKUs',data:['A','B','C'].map(k=>g[k].length/(cl.length||1)*100),backgroundColor:cssVar('--seq2'),borderRadius:4,borderSkipped:'bottom',maxBarThickness:36},
       {label:'% do volume',data:['A','B','C'].map(k=>sum(g[k].map(x=>x.qty))/total*100),backgroundColor:S[0],borderRadius:4,borderSkipped:'bottom',maxBarThickness:36}]},
     options:{maintainAspectRatio:false,scales:{x:gridX,y:{max:100,grid:{color:cssVar('--grid')},border:{display:false},ticks:{callback:v=>v+'%'}}},plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${pct(c.raw/100)}`}}}}});
-  fillTable('t-abc',cl.map((x,i)=>[i+1,x.sku,x.cls,x.qty,x.qty/total,x.cum]),[{},{},{f:v=>`<span class="tag ${v}">${v}</span>`},{r:1,f:fmt},{r:1,f:v=>pct(v)},{r:1,f:v=>pct(v)}]);
+  fillTable('t-abc',cl.map((x,i)=>[i+1,x.sku,x.cls,x.qty,x.qty/total,x.cum,stockOf(x.sku)??-Infinity]),[{},{},{f:v=>`<span class="tag ${v}">${v}</span>`},{r:1,f:fmt},{r:1,f:v=>pct(v)},{r:1,f:v=>pct(v)},{r:1,f:v=>v===-Infinity?'—':fmt(v)}]);
+  const semEst=cl.filter(x=>!STOCK.has(x.sku)).length;
+  $('#abc-stock-note').textContent=!stockInfo.ok?'Estoque MKT indisponível':(stockInfo.cache?'Estoque MKT em cache':'Estoque MKT atual')+(semEst?` · ${fmt(semEst)} SKUs sem estoque na aba (—)`:'');
 }
 
 /* ============ RENDER: COMPARE ============ */
@@ -808,7 +831,7 @@ function exportXlsx(){
     ['Indicador','Valor'],['Unidades saídas',total],['SKUs com saída',bySku.length],['Lançamentos',rows.length],['Dias com registro',byDay.length],['Média por dia',byDay.length?Math.round(total/byDay.length):0],['SKU líder',bySku[0]?bySku[0].sku:'—'],['Unidades do líder',bySku[0]?bySku[0].qty:0]];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(resumo),'Resumo Executivo');
   const cl=abcClassify(bySku,total||1);
-  const rk=[['#','SKU','Classe','Unidades','Share','Acumulado','Dias c/ saída','Média/dia ativo','Maior dia']].concat(cl.map((x,i)=>[i+1,x.sku,x.cls,x.qty,x.qty/total,x.cum,x.days,+(x.qty/x.days).toFixed(1),x.max]));
+  const rk=[['#','SKU','Classe','Unidades','Share','Acumulado','Dias c/ saída','Média/dia ativo','Maior dia','Estoque MKT']].concat(cl.map((x,i)=>[i+1,x.sku,x.cls,x.qty,x.qty/total,x.cum,x.days,+(x.qty/x.days).toFixed(1),x.max,stockOf(x.sku)??'']));
   const ws2=XLSX.utils.aoa_to_sheet(rk); for(let i=1;i<rk.length;i++){ ['E','F'].forEach(c=>{const cell=ws2[c+(i+1)]; if(cell) cell.z='0.0%';}); }
   XLSX.utils.book_append_sheet(wb,ws2,'Ranking e Curva ABC');
   const ra=cmpRange(cmp.A), rb=cmpRange(cmp.B);
@@ -826,7 +849,7 @@ function exportXlsx(){
   const notas=[['Notas'],['Fonte: planilha Google Sheets, aba "saídas diárias" (leitura ao vivo).'],['Cada bloco de lançamento entra na data do primeiro dia do título (ex.: "28/08 a 1/9" conta em 28/08).'],['SKUs com grafia diferente NÃO foram somados entre si:']].concat(VARIANTS.map(v=>['  '+v.join(' / ')]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(notas),'Notas');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Data','Lançamento','SKU','Quantidade']].concat(rows.sort((a,b)=>a.key.localeCompare(b.key)).map(r=>[fmtDateY(r.date),r.label,r.sku,r.qty]))),'Dados');
-  const wsR=wb.Sheets['Resumo Executivo']; wsR['!cols']=[{wch:22},{wch:28}]; ws2['!cols']=[{wch:5},{wch:12},{wch:8},{wch:11},{wch:9},{wch:11},{wch:13},{wch:15},{wch:10}]; ws3['!cols']=[{wch:12},{wch:22},{wch:22},{wch:11},{wch:10}];
+  const wsR=wb.Sheets['Resumo Executivo']; wsR['!cols']=[{wch:22},{wch:28}]; ws2['!cols']=[{wch:5},{wch:12},{wch:8},{wch:11},{wch:9},{wch:11},{wch:13},{wch:15},{wch:10},{wch:13}]; ws3['!cols']=[{wch:12},{wch:22},{wch:22},{wch:11},{wch:10}];
   const name=`saidas_${(filter.from||'').replace(/-/g,'')}_${(filter.to||'').replace(/-/g,'')}.xlsx`;
   XLSX.writeFile(wb,name);
 }
@@ -913,9 +936,24 @@ function render(){
 }
 
 /* ============ LOAD ============ */
+/* Falha aqui não derruba o painel: as saídas seguem normais e a coluna fica com "—". */
+async function loadStock(){
+  let text=null, cache=0;
+  try{
+    const res=await fetch(STOCK_URL+'&_='+Date.now(),{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    text=await res.text();
+    try{ localStorage.setItem('stockcache',JSON.stringify({t:Date.now(),text})); }catch(e){}
+  }catch(err){
+    try{ const c=JSON.parse(localStorage.getItem('stockcache')||'null'); if(c){text=c.text;cache=c.t;} }catch(e){}
+  }
+  const m=text?parseStock(parseCSV(text)):new Map();
+  if(m.size){ STOCK=m; stockInfo={ok:true,cache}; } else if(!STOCK.size){ stockInfo={ok:false,cache:0}; }
+}
 async function load(force){
   const L=$('#loading'); if(force){L.style.display='flex';$('#loadmsg').textContent='Atualizando da planilha…';}
   let text=null, fromCache=false;
+  const stockP=loadStock();
   try{
     const res=await fetch(CSV_URL+'&_='+Date.now(),{cache:'no-store'});
     if(!res.ok) throw new Error('HTTP '+res.status);
@@ -925,6 +963,7 @@ async function load(force){
     try{ const c=JSON.parse(localStorage.getItem('csvcache')||'null'); if(c){text=c.text;fromCache=c.t;} }catch(e){}
     if(!text){ $('#loadmsg').innerHTML=`<div class="err">Não consegui ler a planilha (${esc(err.message)}).<br>Confira se ela está compartilhada como "qualquer pessoa com o link" e tente de novo.</div><button class="btn" onclick="load(true)" style="margin-top:10px">Tentar novamente</button>`; $('#statusdot').classList.add('off'); $('#statustxt').textContent='Sem conexão com a planilha'; return; }
   }
+  await stockP;
   const {blocks,raw}=buildModel(parseCSV(text));
   BLOCKS=blocks; RAW=raw;
   months=windowMonths();
