@@ -89,6 +89,8 @@ h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
 
 /* cards */
 .grid{display:grid;gap:14px}
+.grid>*{min-width:0}
+.g-5{grid-template-columns:repeat(5,1fr)}
 .g-4{grid-template-columns:repeat(4,1fr)}
 .g-3{grid-template-columns:repeat(3,1fr)}
 .g-2{grid-template-columns:repeat(2,1fr)}
@@ -183,14 +185,14 @@ tr:hover td{background:var(--surface-2)}
 @container (max-width:860px){.sm-main{grid-template-columns:1fr;flex:none}.sm-chart{height:260px}.sm-main .tbl{max-height:420px}.sm-tiles{grid-template-columns:repeat(3,1fr)}}
 @container (max-width:480px){.sm-tiles{grid-template-columns:repeat(2,1fr)}.tile .val{font-size:22px}}
 
-@media (max-width:1100px){.g-4{grid-template-columns:repeat(2,1fr)}.g-3{grid-template-columns:1fr 1fr}.g-21,.g-12{grid-template-columns:1fr}}
+@media (max-width:1100px){.g-5{grid-template-columns:repeat(3,1fr)}.g-4{grid-template-columns:repeat(2,1fr)}.g-3{grid-template-columns:1fr 1fr}.g-21,.g-12{grid-template-columns:1fr}}
 @media (max-width:800px){
   .app{grid-template-columns:1fr}
   .nav{position:relative;height:auto;flex-direction:row;flex-wrap:wrap;padding:12px;gap:2px}
   .brand{width:100%;padding-bottom:8px}.nav-sec,.nav .foot{display:none}
   .nav a{padding:6px 9px;font-size:12.5px}
   .main{padding:16px 16px 40px}
-  .g-4,.g-3,.g-2{grid-template-columns:1fr}
+  .g-5,.g-4,.g-3,.g-2{grid-template-columns:1fr}
   .field input[type=search]{width:120px}
 }
 @media print{
@@ -737,11 +739,13 @@ function renderLookup(){
   if(exact){
     const rr=rows.filter(r=>r.sku===exact.sku).sort((a,b)=>a.key.localeCompare(b.key));
     const rank=aggBySku(rows).findIndex(s=>s.sku===exact.sku)+1;
-    h+=`<div class="grid g-4" style="margin-bottom:14px">
+    const est=stockOf(exact.sku);
+    h+=`<div class="grid g-5" style="margin-bottom:14px">
       <div class="tile"><div class="lbl">SKU ${esc(exact.sku)} · unidades no período</div><div class="val num" style="color:${S[0]}">${fmt(exact.qty)}</div><div class="delta">${pct(exact.qty/total)} do total · ${rank}º no ranking</div></div>
       <div class="tile"><div class="lbl">Dias com saída</div><div class="val num">${fmt(exact.days)}</div><div class="delta">${fmt(rr.length)} lançamentos</div></div>
       <div class="tile"><div class="lbl">Média por lançamento</div><div class="val num">${fmt1(exact.qty/rr.length)}</div><div class="delta">mín ${fmt(Math.min(...rr.map(r=>r.qty)))} · máx ${fmt(exact.max)}</div></div>
       <div class="tile"><div class="lbl">Maior dia</div><div class="val num">${fmt(exact.max)}</div><div class="delta">${esc(exact.maxDay)}</div></div>
+      <div class="tile"><div class="lbl">Estoque MKT</div><div class="val num">${est===null?'—':fmt(est)}</div><div class="delta">${!stockInfo.ok?'aba indisponível':est===null?'SKU fora da aba estoque mkt':stockInfo.cache?'saldo em cache':'saldo atual'}</div></div>
     </div>
     <div class="grid g-21"><div><div class="chart short"><canvas id="c-lookup"></canvas></div></div>
     <div class="lk-side"><div class="head"><span>${fmt(rr.length)} lançamentos</span><button class="btn xs no-print" id="lookup-expand" type="button" title="Abrir o panorama do SKU em uma janela maior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Expandir</button></div>
