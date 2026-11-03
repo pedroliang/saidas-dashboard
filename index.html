@@ -149,6 +149,12 @@ tr:hover td{background:var(--surface-2)}
 .hm .lab{font-size:11px;color:var(--muted);display:flex;align-items:center}
 .print-only{display:none}
 
+/* descrição ocupa a sobra da largura e deixa as demais colunas juntas */
+#t-abc th:nth-child(3){width:100%}
+#lk-tbl th:nth-child(2){width:100%}
+#lookup-desc{font-weight:400;color:var(--ink-2);margin-left:8px}
+.sm-head h2 span{font-weight:400;color:var(--ink-2);margin-left:6px}
+
 /* painel do SKU (pop-up ajustável) */
 .lk-side{display:flex;flex-direction:column;gap:6px;min-width:0}
 .lk-side .tbl{max-height:186px}
@@ -237,7 +243,7 @@ tr:hover td{background:var(--surface-2)}
 
     <!-- CONSULTA DE SKU -->
     <div class="card" id="lookup" hidden style="margin-bottom:14px">
-      <h3>Consulta de SKU <small id="lookup-sub"></small><button class="btn no-print" id="lookup-close" style="height:28px;padding:0 9px">Fechar</button></h3>
+      <h3><span>Consulta de SKU<span id="lookup-desc"></span></span> <small id="lookup-sub"></small><button class="btn no-print" id="lookup-close" style="height:28px;padding:0 9px">Fechar</button></h3>
       <div id="lookup-body"></div>
     </div>
 
@@ -296,7 +302,7 @@ tr:hover td{background:var(--surface-2)}
           <div class="card"><h3>Curva de Pareto <small>acumulado do volume por SKU ordenado</small></h3><div class="chart tall"><canvas id="c-abc"></canvas></div></div>
           <div class="card"><h3>Distribuição das classes</h3><div class="chart tall"><canvas id="c-abcbar"></canvas></div></div>
         </div>
-        <div class="card"><h3>Classificação completa <small id="abc-stock-note"></small></h3><div class="tbl"><table id="t-abc"><thead><tr><th>#</th><th>SKU</th><th>Classe</th><th class="r">Unidades</th><th class="r">Share</th><th class="r">Acumulado</th><th class="r">Estoque MKT</th></tr></thead><tbody></tbody></table></div></div>
+        <div class="card"><h3>Classificação completa <small id="abc-stock-note"></small></h3><div class="tbl"><table id="t-abc"><thead><tr><th>#</th><th>SKU</th><th>Descrição</th><th>Classe</th><th class="r">Unidades</th><th class="r">Share</th><th class="r">Acumulado</th><th class="r">Estoque MKT</th></tr></thead><tbody></tbody></table></div></div>
       </div>
     </section>
 
@@ -367,6 +373,7 @@ const DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
 /* ============ STATE ============ */
 let RAW = [];      // {date:Date, key:'YYYY-MM-DD', label, sku, qty, block}
 let STOCK = new Map(); // sku -> total de unidades na aba estoque mkt
+let DESCS = new Map(); // sku -> descrição na aba estoque mkt
 let stockInfo = {ok:false, cache:0};
 let BLOCKS = [];   // {label, date, key, rows:[{sku,qty}]}
 let VARIANTS = []; // sku spellings that look like variants
@@ -458,19 +465,21 @@ function buildModel(rows){
 /* Aba estoque mkt: linha de cabeçalho "COD. | DESCRICAO | TOTAL UN | ...". SKU casa pela grafia exata. */
 function parseStock(rows){
   const iH=rows.findIndex(r=>/^c[óo]d/i.test((r[0]||'').trim()));
-  if(iH<0) return new Map();
+  const m=new Map(), d=new Map();
+  if(iH<0) return {m,d};
   const iQ=rows[iH].findIndex(c=>/^total\s*un/i.test(c.trim()));
-  if(iQ<0) return new Map();
-  const m=new Map();
+  const iD=rows[iH].findIndex(c=>/^descri/i.test(c.trim()));
   for(const r of rows.slice(iH+1)){
-    const sku=(r[0]||'').trim(), v=(r[iQ]||'').trim();
-    if(!sku||v==='') continue;
+    const sku=(r[0]||'').trim(); if(!sku) continue;
+    const desc=iD<0?'':(r[iD]||'').trim(); if(desc) d.set(sku,desc);
+    const v=iQ<0?'':(r[iQ]||'').trim(); if(v==='') continue;
     const q=parseFloat(v.replace(/\./g,'').replace(',','.'));
     if(!isNaN(q)) m.set(sku,q);
   }
-  return m;
+  return {m,d};
 }
 const stockOf = sku => STOCK.has(sku)?STOCK.get(sku):null;
+const descOf = sku => DESCS.get(sku)||'';
 
 /* ============ DATA ACCESS ============ */
 function inRange(r, from, to){ return (!from||r.key>=from) && (!to||r.key<=to); }
@@ -604,7 +613,7 @@ function renderABC(){
       {label:'% dos SKUs',data:['A','B','C'].map(k=>g[k].length/(cl.length||1)*100),backgroundColor:cssVar('--seq2'),borderRadius:4,borderSkipped:'bottom',maxBarThickness:36},
       {label:'% do volume',data:['A','B','C'].map(k=>sum(g[k].map(x=>x.qty))/total*100),backgroundColor:S[0],borderRadius:4,borderSkipped:'bottom',maxBarThickness:36}]},
     options:{maintainAspectRatio:false,scales:{x:gridX,y:{max:100,grid:{color:cssVar('--grid')},border:{display:false},ticks:{callback:v=>v+'%'}}},plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${pct(c.raw/100)}`}}}}});
-  fillTable('t-abc',cl.map((x,i)=>[i+1,x.sku,x.cls,x.qty,x.qty/total,x.cum,stockOf(x.sku)??-Infinity]),[{},{},{f:v=>`<span class="tag ${v}">${v}</span>`},{r:1,f:fmt},{r:1,f:v=>pct(v)},{r:1,f:v=>pct(v)},{r:1,f:v=>v===-Infinity?'—':fmt(v)}]);
+  fillTable('t-abc',cl.map((x,i)=>[i+1,x.sku,descOf(x.sku),x.cls,x.qty,x.qty/total,x.cum,stockOf(x.sku)??-Infinity]),[{},{},{f:v=>esc(v)||'—'},{f:v=>`<span class="tag ${v}">${v}</span>`},{r:1,f:fmt},{r:1,f:v=>pct(v)},{r:1,f:v=>pct(v)},{r:1,f:v=>v===-Infinity?'—':fmt(v)}]);
   const semEst=cl.filter(x=>!STOCK.has(x.sku)).length;
   $('#abc-stock-note').textContent=!stockInfo.ok?'Estoque MKT indisponível':(stockInfo.cache?'Estoque MKT em cache':'Estoque MKT atual')+(semEst?` · ${fmt(semEst)} SKUs sem estoque na aba (—)`:'');
 }
@@ -716,6 +725,7 @@ function renderLookup(){
   const matches=aggBySku(rows).filter(s=>s.sku.toLowerCase().includes(q));
   const exact=matches.find(s=>s.sku.toLowerCase()===q)||(matches.length===1?matches[0]:null);
   $('#lookup-sub').textContent=`${currentPeriodLabel()} · ${periodText(filter.from,filter.to)}`;
+  $('#lookup-desc').textContent=exact&&descOf(exact.sku)?`${exact.sku} · ${descOf(exact.sku)}`:'';
   if(!matches.length){
     const ever=aggBySku(RAW).filter(s=>s.sku.toLowerCase().includes(q));
     $('#lookup-body').innerHTML=`<div class="empty">Nenhum SKU "${esc(lookupQ)}" com saída neste período.${ever.length?`<br><span class="kbd">Existe em outros períodos: ${ever.slice(0,6).map(s=>esc(s.sku)+' ('+fmt(s.qty)+' un no total)').join(', ')} — mude o filtro para "Tudo".</span>`:''}</div>`;
@@ -737,7 +747,7 @@ function renderLookup(){
     <div class="tbl"><table><thead><tr><th>Lançamento</th><th class="r">Unidades</th></tr></thead><tbody>${rr.map(r=>`<tr><td>${esc(r.label)}</td><td class="r num">${fmt(r.qty)}</td></tr>`).join('')}<tr><td><b>Total</b></td><td class="r num"><b>${fmt(exact.qty)}</b></td></tr></tbody></table></div></div></div>`;
   }
   if(matches.length>1||!exact){
-    h+=`<div class="tbl" style="max-height:260px;margin-top:${exact?'14px':'0'}"><table><thead><tr><th>SKU</th><th class="r">Unidades no período</th><th class="r">Share</th><th class="r">Dias c/ saída</th><th class="r">Maior dia</th></tr></thead><tbody>${matches.slice(0,50).map(s=>`<tr><td><a href="#" data-sku="${esc(s.sku)}" style="font-weight:600;text-decoration:none;color:${S[0]}">${esc(s.sku)}</a></td><td class="r num">${fmt(s.qty)}</td><td class="r num">${pct(s.qty/total)}</td><td class="r num">${fmt(s.days)}</td><td class="r num">${fmt(s.max)} (${esc(s.maxDay)})</td></tr>`).join('')}</tbody></table></div>
+    h+=`<div class="tbl" style="max-height:260px;margin-top:${exact?'14px':'0'}"><table id="lk-tbl"><thead><tr><th>SKU</th><th>Descrição</th><th class="r">Unidades no período</th><th class="r">Share</th><th class="r">Dias c/ saída</th><th class="r">Maior dia</th></tr></thead><tbody>${matches.slice(0,50).map(s=>`<tr><td><a href="#" data-sku="${esc(s.sku)}" style="font-weight:600;text-decoration:none;color:${S[0]}">${esc(s.sku)}</a></td><td>${esc(descOf(s.sku))||'—'}</td><td class="r num">${fmt(s.qty)}</td><td class="r num">${pct(s.qty/total)}</td><td class="r num">${fmt(s.days)}</td><td class="r num">${fmt(s.max)} (${esc(s.maxDay)})</td></tr>`).join('')}</tbody></table></div>
     ${matches.length>1?`<div class="kbd" style="margin-top:6px">${matches.length} SKUs contêm "${esc(lookupQ)}" — clique num SKU para ver o detalhe.</div>`:''}`;
   }
   $('#lookup-body').innerHTML=h;
@@ -763,7 +773,7 @@ function openSkuModal(sku){
   const top=rr.find(r=>r.qty===max), pos=aggBySku(rows).findIndex(s=>s.sku===sku)+1;
   const days=new Set(rr.map(r=>r.key)).size;
   const multi=new Set(rr.map(r=>monthKey(r.date))).size>1;
-  $('#sm-title').innerHTML=`SKU ${esc(sku)}<small>${esc(currentPeriodLabel())} · ${periodText(filter.from,filter.to)}</small>`;
+  $('#sm-title').innerHTML=`SKU ${esc(sku)}${descOf(sku)?`<span>· ${esc(descOf(sku))}</span>`:''}<small>${esc(currentPeriodLabel())} · ${periodText(filter.from,filter.to)}</small>`;
   const tile=(l,v,d)=>`<div class="tile"><div class="lbl">${l}</div><div class="val num">${v}</div><div class="delta">${d}</div></div>`;
   let acc=0, mes='', linhas='';
   for(const r of rr){
@@ -831,8 +841,8 @@ function exportXlsx(){
     ['Indicador','Valor'],['Unidades saídas',total],['SKUs com saída',bySku.length],['Lançamentos',rows.length],['Dias com registro',byDay.length],['Média por dia',byDay.length?Math.round(total/byDay.length):0],['SKU líder',bySku[0]?bySku[0].sku:'—'],['Unidades do líder',bySku[0]?bySku[0].qty:0]];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(resumo),'Resumo Executivo');
   const cl=abcClassify(bySku,total||1);
-  const rk=[['#','SKU','Classe','Unidades','Share','Acumulado','Dias c/ saída','Média/dia ativo','Maior dia','Estoque MKT']].concat(cl.map((x,i)=>[i+1,x.sku,x.cls,x.qty,x.qty/total,x.cum,x.days,+(x.qty/x.days).toFixed(1),x.max,stockOf(x.sku)??'']));
-  const ws2=XLSX.utils.aoa_to_sheet(rk); for(let i=1;i<rk.length;i++){ ['E','F'].forEach(c=>{const cell=ws2[c+(i+1)]; if(cell) cell.z='0.0%';}); }
+  const rk=[['#','SKU','Descrição','Classe','Unidades','Share','Acumulado','Dias c/ saída','Média/dia ativo','Maior dia','Estoque MKT']].concat(cl.map((x,i)=>[i+1,x.sku,descOf(x.sku),x.cls,x.qty,x.qty/total,x.cum,x.days,+(x.qty/x.days).toFixed(1),x.max,stockOf(x.sku)??'']));
+  const ws2=XLSX.utils.aoa_to_sheet(rk); for(let i=1;i<rk.length;i++){ ['F','G'].forEach(c=>{const cell=ws2[c+(i+1)]; if(cell) cell.z='0.0%';}); }
   XLSX.utils.book_append_sheet(wb,ws2,'Ranking e Curva ABC');
   const ra=cmpRange(cmp.A), rb=cmpRange(cmp.B);
   const A=aggBySku(RAW.filter(r=>inRange(r,ra.from,ra.to))), B=aggBySku(RAW.filter(r=>inRange(r,rb.from,rb.to)));
@@ -849,7 +859,7 @@ function exportXlsx(){
   const notas=[['Notas'],['Fonte: planilha Google Sheets, aba "saídas diárias" (leitura ao vivo).'],['Cada bloco de lançamento entra na data do primeiro dia do título (ex.: "28/08 a 1/9" conta em 28/08).'],['SKUs com grafia diferente NÃO foram somados entre si:']].concat(VARIANTS.map(v=>['  '+v.join(' / ')]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(notas),'Notas');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Data','Lançamento','SKU','Quantidade']].concat(rows.sort((a,b)=>a.key.localeCompare(b.key)).map(r=>[fmtDateY(r.date),r.label,r.sku,r.qty]))),'Dados');
-  const wsR=wb.Sheets['Resumo Executivo']; wsR['!cols']=[{wch:22},{wch:28}]; ws2['!cols']=[{wch:5},{wch:12},{wch:8},{wch:11},{wch:9},{wch:11},{wch:13},{wch:15},{wch:10},{wch:13}]; ws3['!cols']=[{wch:12},{wch:22},{wch:22},{wch:11},{wch:10}];
+  const wsR=wb.Sheets['Resumo Executivo']; wsR['!cols']=[{wch:22},{wch:28}]; ws2['!cols']=[{wch:5},{wch:12},{wch:48},{wch:8},{wch:11},{wch:9},{wch:11},{wch:13},{wch:15},{wch:10},{wch:13}]; ws3['!cols']=[{wch:12},{wch:22},{wch:22},{wch:11},{wch:10}];
   const name=`saidas_${(filter.from||'').replace(/-/g,'')}_${(filter.to||'').replace(/-/g,'')}.xlsx`;
   XLSX.writeFile(wb,name);
 }
@@ -947,8 +957,8 @@ async function loadStock(){
   }catch(err){
     try{ const c=JSON.parse(localStorage.getItem('stockcache')||'null'); if(c){text=c.text;cache=c.t;} }catch(e){}
   }
-  const m=text?parseStock(parseCSV(text)):new Map();
-  if(m.size){ STOCK=m; stockInfo={ok:true,cache}; } else if(!STOCK.size){ stockInfo={ok:false,cache:0}; }
+  const {m,d}=text?parseStock(parseCSV(text)):{m:new Map(),d:new Map()};
+  if(m.size){ STOCK=m; DESCS=d; stockInfo={ok:true,cache}; } else if(!STOCK.size){ stockInfo={ok:false,cache:0}; }
 }
 async function load(force){
   const L=$('#loading'); if(force){L.style.display='flex';$('#loadmsg').textContent='Atualizando da planilha…';}
