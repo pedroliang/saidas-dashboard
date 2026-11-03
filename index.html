@@ -302,7 +302,7 @@ tr:hover td{background:var(--surface-2)}
           <div class="card"><h3>Curva de Pareto <small>acumulado do volume por SKU ordenado</small></h3><div class="chart tall"><canvas id="c-abc"></canvas></div></div>
           <div class="card"><h3>Distribuição das classes</h3><div class="chart tall"><canvas id="c-abcbar"></canvas></div></div>
         </div>
-        <div class="card"><h3>Classificação completa <small id="abc-stock-note"></small></h3><div class="tbl"><table id="t-abc"><thead><tr><th>#</th><th>SKU</th><th>Descrição</th><th>Classe</th><th class="r">Unidades</th><th class="r">Share</th><th class="r">Acumulado</th><th class="r">Estoque MKT</th></tr></thead><tbody></tbody></table></div></div>
+        <div class="card"><h3>Classificação completa <span class="row"><small id="abc-stock-note"></small><button class="btn xs no-print" id="abc-xlsx" type="button" title="Baixar esta tabela em Excel, na ordem exibida"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11M7 11l5 5 5-5M4 20h16"/></svg>Excel</button></span></h3><div class="tbl"><table id="t-abc"><thead><tr><th>#</th><th>SKU</th><th>Descrição</th><th>Classe</th><th class="r">Unidades</th><th class="r">Share</th><th class="r">Acumulado</th><th class="r">Estoque MKT</th></tr></thead><tbody></tbody></table></div></div>
       </div>
     </section>
 
@@ -615,6 +615,7 @@ function renderABC(){
     options:{maintainAspectRatio:false,scales:{x:gridX,y:{max:100,grid:{color:cssVar('--grid')},border:{display:false},ticks:{callback:v=>v+'%'}}},plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${pct(c.raw/100)}`}}}}});
   fillTable('t-abc',cl.map((x,i)=>[i+1,x.sku,descOf(x.sku),x.cls,x.qty,x.qty/total,x.cum,stockOf(x.sku)??-Infinity]),[{},{},{f:v=>esc(v)||'—'},{f:v=>`<span class="tag ${v}">${v}</span>`},{r:1,f:fmt},{r:1,f:v=>pct(v)},{r:1,f:v=>pct(v)},{r:1,f:v=>v===-Infinity?'—':fmt(v)}]);
   const semEst=cl.filter(x=>!STOCK.has(x.sku)).length;
+  $('#abc-xlsx').disabled=!cl.length;
   $('#abc-stock-note').textContent=!stockInfo.ok?'Estoque MKT indisponível':(stockInfo.cache?'Estoque MKT em cache':'Estoque MKT atual')+(semEst?` · ${fmt(semEst)} SKUs sem estoque na aba (—)`:'');
 }
 
@@ -863,6 +864,20 @@ function exportXlsx(){
   const name=`saidas_${(filter.from||'').replace(/-/g,'')}_${(filter.to||'').replace(/-/g,'')}.xlsx`;
   XLSX.writeFile(wb,name);
 }
+
+/* Excel só da Classificação completa: mesmas colunas e mesma ordem da tela */
+function exportAbcXlsx(){
+  const t=$('#t-abc'), rows=t._rows||[]; if(!rows.length) return;
+  const aoa=[['#','SKU','Descrição','Classe','Unidades','Share','Acumulado','Estoque MKT']].concat(rows.map(r=>r.map((v,i)=>i===7&&v===-Infinity?'':v)));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  for(let i=2;i<=aoa.length;i++) ['F','G'].forEach(c=>{const cell=ws[c+i]; if(cell) cell.z='0.0%';});
+  ws['!cols']=[{wch:5},{wch:12},{wch:52},{wch:8},{wch:11},{wch:9},{wch:11},{wch:13}];
+  ws['!autofilter']={ref:`A1:H${aoa.length}`};
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Curva ABC');
+  XLSX.writeFile(wb,`curva_abc_${(filter.from||'').replace(/-/g,'')}_${(filter.to||'').replace(/-/g,'')}.xlsx`);
+}
+$('#abc-xlsx').onclick=exportAbcXlsx;
 
 /* ============ NAV / FILTERS ============ */
 const TITLES={overview:'Visão geral',ranking:'Ranking de SKUs',abc:'Curva ABC',compare:'Comparativo de períodos',skus:'Análise de SKUs',data:'Dados'};
